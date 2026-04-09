@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Vektor — V1</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      min-height: 100%;
+      background: #0f0d08;
+      font-family: Georgia, "Times New Roman", serif;
+    }
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 56px 12px 24px;
+      position: relative;
+    }
+    .back {
+      position: absolute;
+      top: 20px;
+      left: 24px;
+      font-size: 10px;
+      letter-spacing: 0.15em;
+      color: #3a3025;
+      text-transform: uppercase;
+      text-decoration: none;
+      font-family: system-ui, sans-serif;
+      transition: color 150ms ease;
+      z-index: 10;
+      min-height: 44px;
+      min-width: 44px;
+      display: inline-flex;
+      align-items: center;
+    }
+    @media (hover: hover) and (pointer: fine) {
+      .back:hover { color: #c8a96e; }
+    }
+    .score-row {
+      display: flex;
+      justify-content: space-between;
+      width: min(600px, 96vw);
+      max-width: 600px;
+      margin-bottom: 10px;
+      font-family: system-ui, sans-serif;
+    }
+    .score-side { text-align: center; flex: 1; }
+    .score-label {
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      color: #6b5c3e;
+      text-transform: uppercase;
+    }
+    .score-num {
+      font-family: Georgia, serif;
+      font-size: 32px;
+      color: #c8a96e;
+      line-height: 1.1;
+    }
+    .canvas-wrap {
+      position: relative;
+      width: min(600px, 96vw);
+      max-width: 600px;
+    }
+    canvas {
+      display: block;
+      width: min(600px, 96vw);
+      height: auto;
+      aspect-ratio: 600 / 400;
+      background: #0f0d08;
+    }
+    .status {
+      margin-top: 14px;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      color: #5a4d35;
+      text-transform: uppercase;
+      text-align: center;
+      font-family: system-ui, sans-serif;
+      width: min(600px, 96vw);
+    }
+    .hint {
+      margin-top: 8px;
+      font-size: 10px;
+      color: #3a3025;
+      letter-spacing: 0.06em;
+      text-align: center;
+      font-family: system-ui, sans-serif;
+      width: min(600px, 96vw);
+    }
+    .touch-bar {
+      display: none;
+      width: min(600px, 96vw);
+      max-width: 600px;
+      margin-top: 0;
+      border-top: 1px solid #2a2318;
+      flex-direction: column;
+    }
+    .touch-bar.show { display: flex; }
+    .touch-space {
+      width: 100%;
+      height: 44px;
+      min-height: 44px;
+      background: rgba(200, 169, 110, 0.08);
+      border: none;
+      border-bottom: 1px solid #2a2318;
+      color: #c8a96e;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      font-family: system-ui, sans-serif;
+    }
+    .touch-row {
+      display: flex;
+      width: 100%;
+    }
+    .touch-arrow {
+      flex: 1;
+      height: 56px;
+      min-height: 56px;
+      background: rgba(200, 169, 110, 0.08);
+      border: none;
+      color: #c8a96e;
+      font-size: 20px;
+      font-family: system-ui, sans-serif;
+    }
+    .touch-arrow:first-child { border-right: 1px solid #2a2318; }
+  </style>
+</head>
+<body>
+  <a class="back" href="/">← Vektor</a>
+  <div class="score-row">
+    <div class="score-side">
+      <div class="score-label">You</div>
+      <div class="score-num" id="scoreP">0</div>
+    </div>
+    <div class="score-side">
+      <div class="score-label">CPU</div>
+      <div class="score-num" id="scoreC">0</div>
+    </div>
+  </div>
+  <div class="canvas-wrap">
+    <canvas id="c" width="600" height="400"></canvas>
+  </div>
+  <p class="status" id="status">Press space to start</p>
+  <p class="hint" id="hintDesk">← → OR A D TO MOVE · SPACE TO PAUSE</p>
+  <div class="touch-bar" id="touchBar">
+    <button type="button" class="touch-space" id="touchSpace">Tap to start</button>
+    <div class="touch-row">
+      <button type="button" class="touch-arrow" id="touchL" aria-label="Left">◀</button>
+      <button type="button" class="touch-arrow" id="touchR" aria-label="Right">▶</button>
+    </div>
+  </div>
+  <script>
+(function () {
+  const W = 600, H = 400;
+  const PADDLE_W = 80, PADDLE_H = 10;
+  const BALL_R = 7;
+  const SPEED = 4.5;
+  const CPU_SPEED = 3.2;
+  const PLAYER_SPEED = 7;
+  const TRAIL_LEN = 8;
+
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d');
+  const elP = document.getElementById('scoreP');
+  const elC = document.getElementById('scoreC');
+  const elStatus = document.getElementById('status');
+  const hintDesk = document.getElementById('hintDesk');
+  const touchBar = document.getElementById('touchBar');
+  const touchSpace = document.getElementById('touchSpace');
+  const touchL = document.getElementById('touchL');
+  const touchR = document.getElementById('touchR');
+
+  const isTouchUI = 'ontouchstart' in window || (window.matchMedia && matchMedia('(pointer: coarse)').matches);
+  if (isTouchUI) {
+    touchBar.classList.add('show');
+    hintDesk.style.display = 'none';
+  }
+
+  let audioCtx = null;
+  function ensureAudio() {
+    if (!audioCtx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) audioCtx = new AC();
+    }
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  }
+
+  function beep({ type, freq, dur, vol }) {
+    if (!audioCtx) return;
+    const t0 = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, t0);
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(vol, t0 + 0.005);
+    g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+    osc.connect(g);
+    g.connect(audioCtx.destination);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.02);
+  }
+
+  function sndPlayerHit() { beep({ type: 'square', freq: 440, dur: 0.1, vol: 0.15 }); }
+  function sndCpuHit() { beep({ type: 'square', freq: 330, dur: 0.1, vol: 0.12 }); }
+  function sndWall() { beep({ type: 'sine', freq: 220, dur: 0.08, vol: 0.1 }); }
+  function sndPlayerScore() { beep({ type: 'square', freq: 660, dur: 0.25, vol: 0.18 }); }
+  function sndCpuScore() {
+    if (!audioCtx) return;
+    const t0 = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(160, t0);
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(0.2, t0 + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.3);
+    osc.connect(g);
+    g.connect(audioCtx.destination);
+    osc.start(t0);
+    osc.stop(t0 + 0.35);
+  }
+
+  let scoreP = 0, scoreC = 0;
+  let running = false;
+  let paused = false;
+  let postScoreUntil = 0;
+  let nextServeToPlayer = true;
+
+  const player = { x: W / 2 - PADDLE_W / 2, y: H - 24 - PADDLE_H };
+  const cpu = { x: W / 2 - PADDLE_W / 2, y: 24 };
+  const ball = { x: W / 2, y: H / 2, vx: 0, vy: 0 };
+  const trail = [];
+
+  const keys = { left: false, right: false };
+
+  function resetBall(serveTowardPlayer) {
+    ball.x = W / 2;
+    ball.y = H / 2;
+    const angle = (Math.random() - 0.5) * Math.PI * 0.5;
+    const dir = serveTowardPlayer ? 1 : -1;
+    ball.vx = Math.sin(angle) * SPEED * (Math.random() < 0.5 ? -1 : 1);
+    ball.vy = Math.cos(angle) * SPEED * dir;
+    const mag = Math.hypot(ball.vx, ball.vy) || 1;
+    ball.vx = (ball.vx / mag) * SPEED;
+    ball.vy = (ball.vy / mag) * SPEED;
+    trail.length = 0;
+  }
+
+  function setStatus(text) {
+    elStatus.textContent = text;
+    if (isTouchUI) {
+      if (!running && !paused) touchSpace.textContent = 'Tap to start';
+      else if (paused) touchSpace.textContent = 'Resume';
+      else touchSpace.textContent = 'Pause';
+    }
+  }
+
+  function launchIfStopped() {
+    ensureAudio();
+    if (!running) {
+      running = true;
+      paused = false;
+      resetBall(Math.random() < 0.5);
+      setStatus('');
+    }
+  }
+
+  function togglePause() {
+    ensureAudio();
+    if (!running) {
+      launchIfStopped();
+      return;
+    }
+    paused = !paused;
+    setStatus(paused ? 'Paused' : '');
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA') { keys.left = true; e.preventDefault(); }
+    if (e.code === 'ArrowRight' || e.code === 'KeyD') { keys.right = true; e.preventDefault(); }
+    if (e.code === 'Space') { e.preventDefault(); togglePause(); }
+  });
+  document.addEventListener('keyup', (e) => {
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = false;
+    if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = false;
+  });
+
+  function bindTouch(btn, onDown, onUp) {
+    const down = (e) => { e.preventDefault(); onDown(); };
+    const up = (e) => { e.preventDefault(); onUp(); };
+    btn.addEventListener('touchstart', down, { passive: false });
+    btn.addEventListener('touchend', up);
+    btn.addEventListener('touchcancel', up);
+    btn.addEventListener('mousedown', (e) => { e.preventDefault(); onDown(); });
+    btn.addEventListener('mouseup', onUp);
+    btn.addEventListener('mouseleave', onUp);
+  }
+
+  bindTouch(touchL, () => { keys.left = true; ensureAudio(); }, () => { keys.left = false; });
+  bindTouch(touchR, () => { keys.right = true; ensureAudio(); }, () => { keys.right = false; });
+  touchSpace.addEventListener('click', () => togglePause());
+  touchSpace.addEventListener('touchstart', (e) => { e.preventDefault(); togglePause(); }, { passive: false });
+
+  function clampPaddle(px) {
+    return Math.max(0, Math.min(W - PADDLE_W, px));
+  }
+
+  function hitPlayer() {
+    if (ball.vy <= 0) return false;
+    const py = player.y;
+    if (ball.y + BALL_R < py) return false;
+    if (ball.y + BALL_R > py + PADDLE_H + BALL_R) return false;
+    if (ball.x < player.x - BALL_R || ball.x > player.x + PADDLE_W + BALL_R) return false;
+    return true;
+  }
+
+  function hitCpu() {
+    if (ball.vy >= 0) return false;
+    const cy = cpu.y;
+    if (ball.y - BALL_R > cy + PADDLE_H) return false;
+    if (ball.y - BALL_R < cy - BALL_R) return false;
+    if (ball.x < cpu.x - BALL_R || ball.x > cpu.x + PADDLE_W + BALL_R) return false;
+    return true;
+  }
+
+  function applyPaddleBounce(isPlayer) {
+    const paddle = isPlayer ? player : cpu;
+    const pc = paddle.x + PADDLE_W / 2;
+    let relative = (ball.x - pc) / (PADDLE_W / 2);
+    relative = Math.max(-1, Math.min(1, relative));
+    const maxAng = Math.PI * 0.35;
+    const angle = relative * maxAng;
+    if (isPlayer) {
+      ball.vx = Math.sin(angle) * SPEED;
+      ball.vy = -Math.abs(Math.cos(angle) * SPEED);
+    } else {
+      ball.vx = Math.sin(angle) * SPEED;
+      ball.vy = Math.abs(Math.cos(angle) * SPEED);
+    }
+    const mag = Math.hypot(ball.vx, ball.vy) || 1;
+    ball.vx = (ball.vx / mag) * SPEED;
+    ball.vy = (ball.vy / mag) * SPEED;
+    if (isPlayer) {
+      ball.y = player.y - BALL_R;
+      sndPlayerHit();
+    } else {
+      ball.y = cpu.y + PADDLE_H + BALL_R;
+      sndCpuHit();
+    }
+  }
+
+  function tick(now) {
+    requestAnimationFrame(tick);
+
+    ctx.fillStyle = '#0f0d08';
+    ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = '#1e1a12';
+    ctx.setLineDash([6, 8]);
+    ctx.beginPath();
+    ctx.moveTo(0, H / 2);
+    ctx.lineTo(W, H / 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    if (running && !paused && now >= postScoreUntil) {
+      if (keys.left) player.x = clampPaddle(player.x - PLAYER_SPEED);
+      if (keys.right) player.x = clampPaddle(player.x + PLAYER_SPEED);
+
+      const target = ball.x + ball.vx * 8;
+      const cx = cpu.x + PADDLE_W / 2;
+      if (target < cx - 2) cpu.x = clampPaddle(cpu.x - CPU_SPEED);
+      else if (target > cx + 2) cpu.x = clampPaddle(cpu.x + CPU_SPEED);
+
+      ball.x += ball.vx;
+      ball.y += ball.vy;
+
+      if (ball.x - BALL_R <= 0) {
+        ball.x = BALL_R;
+        ball.vx *= -1;
+        sndWall();
+      } else if (ball.x + BALL_R >= W) {
+        ball.x = W - BALL_R;
+        ball.vx *= -1;
+        sndWall();
+      }
+
+      if (hitCpu()) applyPaddleBounce(false);
+      else if (hitPlayer()) applyPaddleBounce(true);
+
+      if (ball.y - BALL_R > H) {
+        scoreC++;
+        elC.textContent = scoreC;
+        sndCpuScore();
+        ball.x = W / 2;
+        ball.y = H / 2;
+        ball.vx = 0;
+        ball.vy = 0;
+        trail.length = 0;
+        postScoreUntil = now + 1500;
+        nextServeToPlayer = true;
+      } else if (ball.y + BALL_R < 0) {
+        scoreP++;
+        elP.textContent = scoreP;
+        sndPlayerScore();
+        ball.x = W / 2;
+        ball.y = H / 2;
+        ball.vx = 0;
+        ball.vy = 0;
+        trail.length = 0;
+        postScoreUntil = now + 1500;
+        nextServeToPlayer = false;
+      }
+    }
+
+    if (running && !paused && now >= postScoreUntil && ball.vx === 0 && ball.vy === 0) {
+      resetBall(nextServeToPlayer);
+    }
+
+    trail.unshift({ x: ball.x, y: ball.y });
+    if (trail.length > TRAIL_LEN) trail.pop();
+    for (let i = trail.length - 1; i >= 0; i--) {
+      const p = trail[i];
+      const t = i / (TRAIL_LEN - 1 || 1);
+      const alpha = (1 - t) * 0.4;
+      ctx.beginPath();
+      ctx.fillStyle = 'rgba(200, 169, 110,' + alpha + ')';
+      ctx.arc(p.x, p.y, BALL_R, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.fillStyle = '#c8a96e';
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, BALL_R, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#7a6040';
+    roundRect(cpu.x, cpu.y, PADDLE_W, PADDLE_H, 3);
+    ctx.fillStyle = '#c8a96e';
+    roundRect(player.x, player.y, PADDLE_W, PADDLE_H, 3);
+  }
+
+  function roundRect(x, y, w, h, r) {
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(x, y, w, h, r);
+    else {
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+    }
+    ctx.fill();
+  }
+
+  requestAnimationFrame(tick);
+})();
+  </script>
+</body>
+</html>
