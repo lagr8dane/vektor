@@ -991,6 +991,8 @@
       ctx.fillText('◀ ROT L | THRUST | HYPER | FIRE | ROT R ▶', 100, iy + 16);
       ctx.fillText('PAUSE     II (TOP RIGHT)', 100, iy + 32);
       ctx.fillText('PALETTE   ROW ABOVE (SWIPE ◀ ▶)', 100, iy + 48);
+      ctx.font = '10px system-ui, sans-serif';
+      ctx.fillText('HUNTER   enemy ship (dashed) chases you — later waves', 100, iy + 64);
     } else {
       ctx.fillText('←  →   OR   A  D', 100, iy + 16);
       ctx.fillText('THRUST    ↑   OR   W', 100, iy + 32);
@@ -998,6 +1000,7 @@
       ctx.fillText('HYPER     H', 100, iy + 64);
       ctx.fillText('PAUSE     P', 100, iy + 80);
       ctx.fillText('PALETTE   T OR ROW BELOW', 100, iy + 96);
+      ctx.fillText('HUNTER   enemy ship (dashed diamond) tracks you on later waves', 100, iy + 112);
     }
     ctx.letterSpacing = '0';
     var blink = 0.3 + 0.7 * (0.5 + 0.5 * Math.sin(now / 1200 * Math.PI * 2));
