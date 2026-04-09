@@ -23,23 +23,32 @@
     }
     .back {
       position: absolute;
-      top: 20px;
-      left: 24px;
+      top: 16px;
+      left: 16px;
       font-size: 10px;
-      letter-spacing: 0.15em;
-      color: #3a3025;
+      letter-spacing: 0.18em;
+      color: rgba(255, 248, 230, 0.92);
       text-transform: uppercase;
       text-decoration: none;
       font-family: system-ui, sans-serif;
-      transition: color 150ms ease;
+      transition: background 200ms ease, border-color 200ms ease, color 200ms ease;
       z-index: 20;
       min-height: 44px;
-      min-width: 44px;
+      padding: 0 16px;
       display: inline-flex;
       align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(255, 255, 255, 0.32);
+      border-radius: 3px;
+      background: rgba(0, 0, 0, 0.35);
+      box-sizing: border-box;
     }
     @media (hover: hover) and (pointer: fine) {
-      .back:hover { color: #c8a96e; }
+      .back:hover {
+        color: #fff;
+        background: rgba(255, 255, 255, 0.12);
+        border-color: rgba(255, 255, 255, 0.48);
+      }
     }
     .top-bar {
       width: min(600px, 96vw);
@@ -282,7 +291,7 @@
   </style>
 </head>
 <body>
-  <a class="back" href="/">← Vektor</a>
+  <a class="back" href="/">← Back</a>
   <div class="top-bar">
     <div class="scheme-name" id="schemeLabel">VEKTOR</div>
     <div class="score-block">
@@ -842,11 +851,13 @@
     ctx.globalAlpha = 0.4;
     ctx.font = '13px Georgia, serif';
     ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
     ctx.letterSpacing = '0.3em';
-    ctx.fillText('V E K T O R', W / 2, 28);
+    ctx.fillText('V E K T O R', W / 2, 7);
     ctx.letterSpacing = '0';
     ctx.globalAlpha = 1;
     ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
 
     ctx.strokeStyle = '#1e1a12';
     if (col.disco) {
