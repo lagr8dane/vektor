@@ -568,18 +568,32 @@
     soundToggle.setAttribute('aria-pressed', soundEnabled ? 'true' : 'false');
   }
   syncSoundUi();
-  soundToggle.addEventListener('click', function () {
+  var lastSoundPtrToggleV2 = 0;
+  function toggleSoundPrefV2() {
     soundEnabled = !soundEnabled;
     localStorage.setItem(SOUND_KEY, soundEnabled ? '1' : '0');
     syncSoundUi();
-    if (soundEnabled) {
-      ensureAudio();
-      primeAudioFromGesture();
-    }
+    if (soundEnabled) unlockAudioFromUserGesture();
+  }
+  soundToggle.addEventListener('pointerdown', function (e) {
+    if (!e.isPrimary) return;
+    if (e.pointerType !== 'touch' && e.pointerType !== 'pen') return;
+    e.preventDefault();
+    lastSoundPtrToggleV2 = Date.now();
+    toggleSoundPrefV2();
+  });
+  soundToggle.addEventListener('click', function () {
+    if (Date.now() - lastSoundPtrToggleV2 < 650) return;
+    toggleSoundPrefV2();
   });
 
   let audioCtx = null;
   let audioPrimed = false;
+  try {
+    if (navigator.audioSession && 'type' in navigator.audioSession) {
+      navigator.audioSession.type = 'playback';
+    }
+  } catch (e) {}
   function ensureAudio() {
     if (!soundEnabled) return;
     const AC = window.AudioContext || window.webkitAudioContext;
@@ -587,38 +601,45 @@
     if (!audioCtx) return;
     if (audioCtx.state === 'suspended') void audioCtx.resume();
   }
-  function primeAudioFromGesture() {
+  function unlockAudioFromUserGesture() {
     if (!soundEnabled) return;
     const AC = window.AudioContext || window.webkitAudioContext;
-    if (!audioCtx && AC) audioCtx = new AC();
-    if (!audioCtx) return;
-    const playSilent = function () {
-      try {
-        const osc = audioCtx.createOscillator();
-        const g = audioCtx.createGain();
-        g.gain.setValueAtTime(0.0001, audioCtx.currentTime);
-        osc.connect(g);
-        g.connect(audioCtx.destination);
-        osc.start(audioCtx.currentTime);
-        osc.stop(audioCtx.currentTime + 0.02);
-      } catch (e) {}
-    };
-    if (audioCtx.state === 'suspended') {
-      audioCtx.resume().then(playSilent);
-    } else if (!audioPrimed) {
-      playSilent();
-    }
+    if (!AC) return;
+    if (!audioCtx) audioCtx = new AC();
+    try {
+      if (audioCtx.state === 'suspended') void audioCtx.resume();
+      var buf = audioCtx.createBuffer(1, 1, audioCtx.sampleRate);
+      var src = audioCtx.createBufferSource();
+      src.buffer = buf;
+      src.connect(audioCtx.destination);
+      src.start(0);
+    } catch (e) {}
     audioPrimed = true;
   }
-  document.addEventListener('touchstart', primeAudioFromGesture, { capture: true, passive: true });
-  document.addEventListener('pointerdown', primeAudioFromGesture, { capture: true, passive: true });
+  document.addEventListener('touchstart', function () {
+    unlockAudioFromUserGesture();
+  }, { capture: true, passive: true });
+  document.addEventListener('pointerdown', function () {
+    unlockAudioFromUserGesture();
+  }, { capture: true, passive: true });
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden && soundEnabled && audioCtx && audioCtx.state === 'suspended') {
+      void audioCtx.resume();
+    }
+  });
+
+  function mapOscType(t) {
+    if (!isTouchUI) return t;
+    if (t === 'square' || t === 'sawtooth') return 'triangle';
+    return t;
+  }
 
   function beep({ type, freq, dur, vol, t0 }) {
-    if (!audioCtx) return;
+    if (!soundEnabled || !audioCtx) return;
     const start = t0 != null ? t0 : audioCtx.currentTime;
     const osc = audioCtx.createOscillator();
     const g = audioCtx.createGain();
-    osc.type = type;
+    osc.type = mapOscType(type);
     osc.frequency.setValueAtTime(freq, start);
     g.gain.setValueAtTime(0, start);
     g.gain.linearRampToValueAtTime(vol, start + 0.005);
@@ -808,10 +829,25 @@
     btn.addEventListener('mouseleave', onUp);
   }
 
-  bindTouch(touchL, () => { keys.left = true; ensureAudio(); }, () => { keys.left = false; });
-  bindTouch(touchR, () => { keys.right = true; ensureAudio(); }, () => { keys.right = false; });
-  touchSpace.addEventListener('click', () => togglePause());
-  touchSpace.addEventListener('touchstart', (e) => { e.preventDefault(); togglePause(); }, { passive: false });
+  bindTouch(touchL, () => {
+    keys.left = true;
+    unlockAudioFromUserGesture();
+    ensureAudio();
+  }, () => { keys.left = false; });
+  bindTouch(touchR, () => {
+    keys.right = true;
+    unlockAudioFromUserGesture();
+    ensureAudio();
+  }, () => { keys.right = false; });
+  touchSpace.addEventListener('click', function () {
+    unlockAudioFromUserGesture();
+    togglePause();
+  });
+  touchSpace.addEventListener('touchstart', function (e) {
+    e.preventDefault();
+    unlockAudioFromUserGesture();
+    togglePause();
+  }, { passive: false });
 
   btnAgain.addEventListener('click', () => resetMatch());
 
