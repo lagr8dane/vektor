@@ -687,6 +687,8 @@
   var shipBreakup = 0;
   var INV_RESPAWN_FRAMES = 60;
   var waveClearBusy = false;
+  var levelPopup = null;
+  var LEVEL_POPUP_FRAMES = 120;
 
   function loadHS() {
     try {
@@ -747,6 +749,7 @@
     parts = [];
     bonusFlash = null;
     bCooldown = 0;
+    levelPopup = null;
     startWave();
   }
 
@@ -819,6 +822,7 @@
       beep(523, 'square', 0.1, 0.15);
       wave++;
       startWave();
+      levelPopup = { t: LEVEL_POPUP_FRAMES };
       saveHS();
     } finally {
       waveClearBusy = false;
@@ -1114,104 +1118,109 @@
     }
 
     if (!paused) {
-      if (shipBreakup > 0) {
-        ship.x = W / 2;
-        ship.y = H / 2;
-        ship.vx = ship.vy = 0;
-        ship.ang = -Math.PI / 2;
-        shipBreakup -= f;
-        if (shipBreakup <= 0) {
-          shipBreakup = 0;
-          ship.inv = INV_RESPAWN_FRAMES;
-        }
+      if (levelPopup && levelPopup.t > 0) {
+        levelPopup.t -= f;
+        if (levelPopup.t <= 0) levelPopup = null;
       } else {
-        var rotSp = 0.065 * f;
-        if (rotL) ship.ang -= rotSp;
-        if (rotR) ship.ang += rotSp;
-        if (thrust) {
-          var acc = 0.14 * f;
-          ship.vx += Math.cos(ship.ang) * acc;
-          ship.vy += Math.sin(ship.ang) * acc;
+        if (shipBreakup > 0) {
+          ship.x = W / 2;
+          ship.y = H / 2;
+          ship.vx = ship.vy = 0;
+          ship.ang = -Math.PI / 2;
+          shipBreakup -= f;
+          if (shipBreakup <= 0) {
+            shipBreakup = 0;
+            ship.inv = INV_RESPAWN_FRAMES;
+          }
+        } else {
+          var rotSp = 0.065 * f;
+          if (rotL) ship.ang -= rotSp;
+          if (rotR) ship.ang += rotSp;
+          if (thrust) {
+            var acc = 0.14 * f;
+            ship.vx += Math.cos(ship.ang) * acc;
+            ship.vy += Math.sin(ship.ang) * acc;
+          }
+          ship.vx *= Math.pow(0.992, f);
+          ship.vy *= Math.pow(0.992, f);
+          ship.x += ship.vx * f;
+          ship.y += ship.vy * f;
+          wrap(ship);
+          if (ship.inv > 0) ship.inv -= f;
         }
-        ship.vx *= Math.pow(0.992, f);
-        ship.vy *= Math.pow(0.992, f);
-        ship.x += ship.vx * f;
-        ship.y += ship.vy * f;
-        wrap(ship);
-        if (ship.inv > 0) ship.inv -= f;
-      }
-      if (bCooldown > 0) bCooldown -= f;
+        if (bCooldown > 0) bCooldown -= f;
 
-      var swarm = rockMass() < D().swarmThreshold ? 1.6 : 1;
+        var swarm = rockMass() < D().swarmThreshold ? 1.6 : 1;
 
-      for (var hi = hunters.length - 1; hi >= 0; hi--) {
-        var h = hunters[hi];
-        var td = toroidalDelta(h.x, h.y, ship.x, ship.y);
-        var want = Math.atan2(td.dy, td.dx);
-        var turn = D().huntTurnRate * swarm * f;
-        var da = want - h.ang;
-        while (da > Math.PI) da -= Math.PI * 2;
-        while (da < -Math.PI) da += Math.PI * 2;
-        h.ang += Math.sign(da) * Math.min(Math.abs(da), turn);
-        var sp = 2.2 * D().asteroidSpeedMult;
-        h.vx = Math.cos(h.ang) * sp;
-        h.vy = Math.sin(h.ang) * sp;
-        h.x += h.vx * f;
-        h.y += h.vy * f;
-        wrap(h);
-        if (distToroidal(h, ship) < h.r + 10 && ship.inv <= 0 && shipBreakup <= 0) {
-          hitShip();
-        }
-      }
-
-      for (var ri = rocks.length - 1; ri >= 0; ri--) {
-        var rk = rocks[ri];
-        rk.x += rk.vx * f;
-        rk.y += rk.vy * f;
-        rk.rot += rk.vr * f;
-        wrap(rk);
-        if (distToroidal(rk, ship) < rk.r + 8 && ship.inv <= 0 && shipBreakup <= 0) {
-          hitShip();
-        }
-      }
-
-      for (var bi = bullets.length - 1; bi >= 0; bi--) {
-        var b = bullets[bi];
-        b.x += b.vx * f;
-        b.y += b.vy * f;
-        wrap(b);
-        b.life -= f;
-        if (b.life <= 0) {
-          bullets.splice(bi, 1);
-          continue;
-        }
-        var hit = false;
-        for (var rj = rocks.length - 1; rj >= 0; rj--) {
-          var R = rocks[rj];
-          if (distToroidal(b, R) < R.r + 4) {
-            splitRock(R, col);
-            hit = true;
-            break;
+        for (var hi = hunters.length - 1; hi >= 0; hi--) {
+          var h = hunters[hi];
+          var td = toroidalDelta(h.x, h.y, ship.x, ship.y);
+          var want = Math.atan2(td.dy, td.dx);
+          var turn = D().huntTurnRate * swarm * f;
+          var da = want - h.ang;
+          while (da > Math.PI) da -= Math.PI * 2;
+          while (da < -Math.PI) da += Math.PI * 2;
+          h.ang += Math.sign(da) * Math.min(Math.abs(da), turn);
+          var sp = 2.2 * D().asteroidSpeedMult;
+          h.vx = Math.cos(h.ang) * sp;
+          h.vy = Math.sin(h.ang) * sp;
+          h.x += h.vx * f;
+          h.y += h.vy * f;
+          wrap(h);
+          if (distToroidal(h, ship) < h.r + 10 && ship.inv <= 0 && shipBreakup <= 0) {
+            hitShip();
           }
         }
-        if (!hit) {
-          for (var hj = hunters.length - 1; hj >= 0; hj--) {
-            var Hn = hunters[hj];
-            if (distToroidal(b, Hn) < Hn.r + 4) {
-              score += 200;
-              explode(Hn.x, Hn.y, col.ship, 12);
-              hunters.splice(hj, 1);
+
+        for (var ri = rocks.length - 1; ri >= 0; ri--) {
+          var rk = rocks[ri];
+          rk.x += rk.vx * f;
+          rk.y += rk.vy * f;
+          rk.rot += rk.vr * f;
+          wrap(rk);
+          if (distToroidal(rk, ship) < rk.r + 8 && ship.inv <= 0 && shipBreakup <= 0) {
+            hitShip();
+          }
+        }
+
+        for (var bi = bullets.length - 1; bi >= 0; bi--) {
+          var b = bullets[bi];
+          b.x += b.vx * f;
+          b.y += b.vy * f;
+          wrap(b);
+          b.life -= f;
+          if (b.life <= 0) {
+            bullets.splice(bi, 1);
+            continue;
+          }
+          var hit = false;
+          for (var rj = rocks.length - 1; rj >= 0; rj--) {
+            var R = rocks[rj];
+            if (distToroidal(b, R) < R.r + 4) {
+              splitRock(R, col);
               hit = true;
-              beep(400, 'square', 0.1, 0.12);
               break;
             }
           }
+          if (!hit) {
+            for (var hj = hunters.length - 1; hj >= 0; hj--) {
+              var Hn = hunters[hj];
+              if (distToroidal(b, Hn) < Hn.r + 4) {
+                score += 200;
+                explode(Hn.x, Hn.y, col.ship, 12);
+                hunters.splice(hj, 1);
+                hit = true;
+                beep(400, 'square', 0.1, 0.12);
+                break;
+              }
+            }
+          }
+          if (hit) bullets.splice(bi, 1);
         }
-        if (hit) bullets.splice(bi, 1);
-      }
 
-      if (rocks.length === 0 && hunters.length === 0) {
-        waveCleared();
+        if (rocks.length === 0 && hunters.length === 0) {
+          waveCleared();
+        }
       }
     }
 
@@ -1313,6 +1322,16 @@
       ctx.globalAlpha = 1;
       bonusFlash.t -= f;
       if (bonusFlash.t <= 0) bonusFlash = null;
+    }
+
+    if (levelPopup && levelPopup.t > 0) {
+      ctx.fillStyle = 'rgba(0,0,0,0.52)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = col.text;
+      ctx.textAlign = 'center';
+      ctx.font = '34px Georgia, serif';
+      ctx.fillText('LEVEL ' + wave, W / 2, H / 2);
+      ctx.textAlign = 'left';
     }
 
     if (paused) {
