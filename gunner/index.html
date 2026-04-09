@@ -3,85 +3,272 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Professor Gunner's Schoolhouse</title>
+  <title>Professor Gunner's Schoolhouse — Coming Soon</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
-      min-height: 100%;
-      min-height: 100dvh;
+      height: 100%;
+      overflow: hidden;
       background: #5BA3D9;
-      font-family: "Press Start 2P", ui-monospace, monospace;
+      font-family: 'Press Start 2P', monospace;
     }
     body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      padding: 72px 16px 24px;
+    }
+    .brand {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      cursor: pointer;
+      opacity: 0.7;
+      transition: opacity 200ms ease;
+      text-align: left;
+      z-index: 10;
+    }
+    .brand:hover { opacity: 1; }
+    .brand-name {
+      display: block;
+      font-size: 9px;
+      color: #FFE066;
+    }
+    .brand-com {
+      display: block;
+      margin-top: 4px;
+      font-size: 7px;
+      color: rgba(255, 255, 255, 0.6);
+    }
+    .center {
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 80px 20px 40px;
+      text-align: center;
+      max-width: 100%;
+    }
+    .canvas-wrap {
       position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 0;
     }
-    .atorgames-brand {
+    .speech-bubble {
       position: absolute;
-      top: 16px;
-      left: 16px;
-      z-index: 40;
-      cursor: pointer;
-      opacity: 0.6;
-      transition: opacity 200ms ease;
-      line-height: 1.4;
-    }
-    .atorgames-brand:hover { opacity: 1; }
-    .atorgames-name {
-      display: block;
-      font-size: 10px;
-      color: #FFE066;
-    }
-    .atorgames-com {
-      display: block;
-      font-size: 7px;
-      color: #fff;
-      margin-top: 4px;
-    }
-    h1 {
-      font-size: clamp(12px, 3.5vw, 16px);
-      color: #FFE066;
-      text-align: center;
-      line-height: 1.8;
-      max-width: 520px;
-    }
-    p {
-      margin-top: 32px;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      margin-bottom: 10px;
+      max-width: 160px;
+      padding: 8px 12px;
+      background: #fff;
+      border-radius: 8px;
       font-size: 8px;
-      color: rgba(0, 0, 0, 0.45);
+      line-height: 1.5;
+      color: #1a3a5c;
       text-align: center;
-      line-height: 1.8;
+      opacity: 1;
+      transition: opacity 300ms ease;
+      pointer-events: none;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
     }
+    .speech-bubble::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      bottom: -8px;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 8px solid transparent;
+      border-right: 8px solid transparent;
+      border-top: 8px solid #fff;
+    }
+    #gunner-canvas {
+      display: block;
+      width: 160px;
+      height: 192px;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+    .title-a {
+      font-size: 12px;
+      color: #fff;
+      margin-top: 8px;
+      margin-bottom: 6px;
+      line-height: 1.6;
+      max-width: 320px;
+    }
+    .title-b {
+      font-size: 15px;
+      color: #FFE066;
+      margin-bottom: 28px;
+      line-height: 1.5;
+      max-width: 320px;
+    }
+    .soon {
+      font-size: 9px;
+      color: #fff;
+      letter-spacing: 0.06em;
+      line-height: 1.6;
+    }
+    .spacer-40 { height: 40px; flex-shrink: 0; }
+    .back {
+      display: inline-block;
+      margin-top: 0;
+      font-size: 8px;
+      color: rgba(255, 255, 255, 0.5);
+      text-decoration: none;
+      cursor: pointer;
+      transition: color 200ms ease;
+    }
+    .back:hover { color: rgba(255, 255, 255, 0.9); }
   </style>
 </head>
 <body>
-  <div class="atorgames-brand" onclick="goHome()" role="link" tabindex="0" aria-label="AtorGames home" onkeydown="if(event.key==='Enter'||event.key===' ')goHome()">
-    <span class="atorgames-name">AtorGames</span>
-    <span class="atorgames-com">.com</span>
+  <div class="brand" onclick="window.location.href='/'" role="link" tabindex="0"
+       onkeydown="if(event.key==='Enter'||event.key===' ')window.location.href='/'"
+       aria-label="AtorGames home">
+    <span class="brand-name">AtorGames</span>
+    <span class="brand-com">.com</span>
   </div>
-  <h1>PROFESSOR GUNNER'S<br>SCHOOLHOUSE</h1>
-  <p>Curriculum loading…</p>
+
+  <div class="center">
+    <div class="canvas-wrap">
+      <div id="speech" class="speech-bubble" aria-live="polite"><span id="speechText">WOOF!</span></div>
+      <canvas id="gunner-canvas" width="160" height="192" aria-hidden="true"></canvas>
+    </div>
+    <div class="title-a">PROFESSOR GUNNER'S</div>
+    <div class="title-b">SCHOOLHOUSE</div>
+    <p class="soon">Coming soon.</p>
+    <div class="spacer-40"></div>
+    <a class="back" href="/">← AtorGames</a>
+  </div>
+
   <script>
-  function goHome() {
-    var o = document.createElement('div');
-    o.setAttribute('aria-hidden', 'true');
-    o.style.cssText = 'position:fixed;inset:0;background:#000;opacity:0;z-index:100000;transition:opacity 500ms ease;pointer-events:none';
-    document.body.appendChild(o);
-    requestAnimationFrame(function () {
-      requestAnimationFrame(function () {
-        o.style.opacity = '1';
-        o.style.pointerEvents = 'auto';
-      });
-    });
-    setTimeout(function () { window.location.href = '/'; }, 500);
+(function () {
+  var TAN = '#C4853A';
+  var DKTAN = '#8B5E20';
+  var CHEST = '#D4A060';
+  var BLACK = '#1A1008';
+  var WHITE = '#F0EDE0';
+  var PINK = '#E8948A';
+  var BROWN = '#7B5433';
+  var NOSE = '#2A1A0A';
+
+  var P = 4;
+  var canvas = document.getElementById('gunner-canvas');
+  var ctx = canvas.getContext('2d');
+
+  function r(x, y, w, h, c) {
+    ctx.fillStyle = c;
+    ctx.fillRect(x * P, y * P, w * P, h * P);
   }
+
+  var tailRects = [
+    [14, 3, 2, 3],
+    [14, 2, 2, 3],
+    [13, 3, 2, 3],
+    [13, 4, 2, 3]
+  ];
+
+  function drawGunner(jumpOffset, tailCycle) {
+    ctx.clearRect(0, 0, 160, 192);
+
+    var bounce = jumpOffset < 0;
+    ctx.fillStyle = 'rgba(0,0,0,0.1)';
+    ctx.beginPath();
+    ctx.ellipse(80, 186, 18, bounce ? 5 : 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    var bx = 3;
+    var by = 13 + jumpOffset;
+    var hx = bx + 1;
+    var hy = jumpOffset;
+
+    var tf = tailRects[tailCycle];
+    r(bx + tf[0], by + tf[1], tf[2], tf[3], TAN);
+
+    r(bx + 1, by + 2, 12, 7, BLACK);
+    r(bx, by + 4, 14, 8, TAN);
+    r(bx + 1, by + 3, 12, 9, TAN);
+    r(bx + 2, by + 2, 10, 4, BLACK);
+    r(bx + 3, by + 3, 8, 3, DKTAN);
+    r(bx + 3, by + 7, 6, 6, CHEST);
+    r(bx + 4, by + 6, 5, 7, CHEST);
+    r(bx + 5, by - 2, 4, 4, TAN);
+
+    r(bx + 1, by + 11, 3, 6, TAN);
+    r(bx + 10, by + 11, 3, 6, TAN);
+    r(bx + 11, by + 13, 3, 5, DKTAN);
+    r(bx + 1, by + 15, 3, 2, WHITE);
+    r(bx + 10, by + 15, 3, 2, WHITE);
+    r(bx + 11, by + 16, 3, 2, WHITE);
+
+    r(hx + 1, hy, 10, 5, BLACK);
+    r(hx, hy + 2, 12, 5, BLACK);
+    r(hx, hy + 4, 12, 7, TAN);
+    r(hx + 1, hy + 3, 10, 8, TAN);
+    r(hx + 2, hy + 9, 8, 4, DKTAN);
+    r(hx + 3, hy + 10, 6, 3, TAN);
+    r(hx + 4, hy + 9, 3, 2, NOSE);
+    r(hx + 5, hy + 12, 2, 2, PINK);
+    r(hx + 4, hy + 13, 4, 1, PINK);
+
+    r(hx - 1, hy + 3, 3, 6, BLACK);
+    r(hx - 1, hy + 4, 2, 5, TAN);
+    r(hx + 11, hy + 3, 3, 6, BLACK);
+    r(hx + 11, hy + 4, 2, 5, TAN);
+
+    r(hx + 2, hy + 4, 2, 1, BLACK);
+    r(hx + 8, hy + 4, 2, 1, BLACK);
+
+    r(hx + 2, hy + 5, 2, 2, BROWN);
+    r(hx + 2, hy + 5, 1, 1, BLACK);
+    r(hx + 3, hy + 5, 1, 1, WHITE);
+    r(hx + 8, hy + 5, 2, 2, BROWN);
+    r(hx + 8, hy + 5, 1, 1, BLACK);
+    r(hx + 9, hy + 5, 1, 1, WHITE);
+  }
+
+  var gameFrame = 0;
+  var tailFrame = 0;
+
+  function tick() {
+    requestAnimationFrame(tick);
+    gameFrame++;
+    tailFrame++;
+    var jumpOffset = (gameFrame % 80) < 10 ? -1 : 0;
+    var tailCycle = Math.floor(tailFrame / 10) % 4;
+    drawGunner(jumpOffset, tailCycle);
+  }
+
+  requestAnimationFrame(tick);
+
+  var PHRASES = ['WOOF!', 'Coming soon!', "I can't wait!", 'Almost ready!'];
+  var speechEl = document.getElementById('speech');
+  var speechText = document.getElementById('speechText');
+  var idx = 0;
+
+  function scheduleCycle() {
+    setTimeout(function () {
+      speechEl.style.opacity = '0';
+      setTimeout(function () {
+        idx = (idx + 1) % PHRASES.length;
+        speechText.textContent = PHRASES[idx];
+        speechEl.style.opacity = '1';
+        setTimeout(scheduleCycle, 2500);
+      }, 300);
+    }, 2500);
+  }
+  scheduleCycle();
+})();
   </script>
 </body>
 </html>
