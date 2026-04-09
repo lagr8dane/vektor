@@ -3,191 +3,478 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Vektor</title>
+  <meta name="description" content="Shall we play a game? AtorGames — arcade and learning games.">
+  <title>AtorGames</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
+      width: 100%;
       min-height: 100%;
-      background: #0f0d08;
-      color: #c8a96e;
-      font-family: Georgia, "Times New Roman", serif;
+      min-height: 100dvh;
+      background: #000000;
+      color: #fff;
+      overflow-x: hidden;
     }
     body {
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      min-height: 100vh;
-      padding: 32px 20px;
-      opacity: 0;
-      animation: pageIn 600ms ease forwards;
+      font-family: Georgia, "Times New Roman", serif;
     }
-    @keyframes pageIn {
-      to { opacity: 1; }
+    #logo-canvas-wrap {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      z-index: 2;
     }
-    .wrap {
+    #logo-canvas {
+      width: min(320px, 90vw);
+      height: auto;
+      aspect-ratio: 4 / 3;
+      max-height: 45vh;
+    }
+    #dom-stage {
+      position: relative;
+      z-index: 3;
       width: 100%;
-      max-width: 900px;
+      max-width: 520px;
+      padding: 24px 20px 48px;
       text-align: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 400ms ease;
     }
-    .wordmark {
-      font-size: 64px;
-      letter-spacing: 0.3em;
-      color: #c8a96e;
-      text-indent: 0.3em;
+    #dom-stage.visible {
+      opacity: 1;
+      pointer-events: auto;
     }
-    @media (prefers-reduced-motion: no-preference) {
-      @media (min-width: 481px) {
-        .wordmark {
-          animation: breathe 4s ease-in-out infinite;
-        }
-      }
+    #dom-stage.faded { opacity: 0; pointer-events: none; }
+    .logo-stack {
+      text-align: center;
+      margin-bottom: 28px;
+      position: relative;
+      min-height: 120px;
     }
-    @keyframes breathe {
-      0%, 100% { letter-spacing: 0.28em; }
-      50% { letter-spacing: 0.34em; }
+    .logo-line1 {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 42px;
+      color: #fff;
+      line-height: 1.05;
+      letter-spacing: 0.02em;
+      transform: translateY(10px);
+      transition: transform 1.5s cubic-bezier(0.22, 1, 0.36, 1);
     }
-    .tagline {
-      margin-top: 12px;
-      font-size: 11px;
-      letter-spacing: 0.2em;
-      color: #6b5c3e;
-      text-transform: uppercase;
-      font-family: system-ui, sans-serif;
+    .logo-stack.spread .logo-line1 {
+      transform: translateY(-8px);
     }
-    .rule {
-      border: none;
-      border-top: 1px solid rgba(200, 169, 110, 0.2);
-      max-width: 600px;
-      margin: 40px auto;
+    .logo-line2 {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 42px;
+      color: #fff;
+      line-height: 1.05;
+      margin-top: 2px;
+      margin-left: 0;
+      letter-spacing: 0.02em;
+      transform: translateY(-36px);
+      transition: transform 1.5s cubic-bezier(0.22, 1, 0.36, 1), margin-left 1.5s cubic-bezier(0.22, 1, 0.36, 1);
     }
-    .cards {
+    .logo-stack.spread .logo-line2 {
+      transform: translateY(4px);
+      margin-left: 0.35em;
+    }
+    .logo-com {
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.4);
+      letter-spacing: 0.15em;
+      text-align: right;
+      max-width: 280px;
+      margin: 6px auto 0;
+      padding-right: 4px;
+    }
+    @media (max-width: 480px) {
+      .logo-line1, .logo-line2 { font-size: 34px; }
+      .logo-com { font-size: 13px; }
+    }
+    .letter {
+      display: inline-block;
+      opacity: 0;
+      transform: translateX(-6px);
+    }
+    .letter.show {
+      opacity: 1;
+      transform: translateX(0);
+      transition: opacity 280ms ease, transform 380ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .morph-spacer {
+      display: inline-block;
+      width: 0;
+      transition: width 1.5s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .morph-spacer.open { width: 0.15em; }
+    #question-block {
+      margin-top: 8px;
+      min-height: 4.5em;
+    }
+    #typed-text {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 18px;
+      letter-spacing: 0.06em;
+      color: #fff;
+      line-height: 1.5;
+    }
+    @media (max-width: 480px) {
+      #typed-text { font-size: 16px; }
+    }
+    #type-cursor {
+      display: inline-block;
+      width: 2px;
+      height: 1.1em;
+      background: #fff;
+      margin-left: 2px;
+      vertical-align: text-bottom;
+      animation: blink 0.85s step-end infinite;
+    }
+    #type-cursor.hidden { display: none; }
+    @keyframes blink {
+      50% { opacity: 0; }
+    }
+    #wargames-attrib {
+      font-family: Arial, sans-serif;
+      font-size: 10px;
+      font-style: italic;
+      color: rgba(255, 255, 255, 0.2);
+      margin-top: 10px;
+      opacity: 0;
+      transition: opacity 600ms ease;
+    }
+    #wargames-attrib.visible { opacity: 1; }
+    #cta-row {
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
-      gap: 60px;
+      gap: 20px;
+      margin-top: 28px;
+      opacity: 0;
+    }
+    #cta-row.visible {
+      opacity: 1;
+      transition: opacity 400ms ease;
     }
     @media (max-width: 480px) {
-      .wordmark { font-size: 40px; }
-      .cards {
-        gap: 32px;
+      #cta-row {
         flex-direction: column;
-        align-items: center;
+        align-items: stretch;
+        gap: 12px;
+        max-width: 280px;
+        margin-left: auto;
+        margin-right: auto;
       }
-      .card { text-align: center; }
     }
-    .card {
-      width: 220px;
-      max-width: 100%;
-    }
-    .card-ver {
-      font-size: 10px;
-      letter-spacing: 0.2em;
-      color: #3a3025;
+    .cta-btn {
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      background: rgba(255, 255, 255, 0.06);
+      color: rgba(255, 255, 255, 0.85);
+      padding: 14px 32px;
+      font-family: Arial, sans-serif;
+      font-size: 11px;
+      letter-spacing: 0.14em;
       text-transform: uppercase;
-      font-family: system-ui, sans-serif;
-    }
-    .card-title {
-      margin-top: 6px;
-      font-size: 22px;
-      color: #c8a96e;
-      transition: color 200ms ease;
-    }
-    @media (hover: hover) and (pointer: fine) {
-      a.card-link:hover .card-title { color: #ffffff; }
-    }
-    .card-desc {
-      margin: 8px 0 14px;
-      font-size: 12px;
-      letter-spacing: 0.08em;
-      color: #6b5c3e;
-      line-height: 1.45;
-      font-family: system-ui, sans-serif;
-    }
-    .btn-play {
-      display: inline-block;
-      border: 1px solid #c8a96e;
-      color: #c8a96e;
-      padding: 8px 20px;
-      font-size: 10px;
-      letter-spacing: 0.15em;
-      background: transparent;
+      border-radius: 3px;
       cursor: pointer;
-      text-decoration: none;
-      text-transform: uppercase;
-      font-family: system-ui, sans-serif;
-      transition: background 200ms ease, color 200ms ease;
-      min-height: 44px;
-      min-width: 44px;
-      line-height: calc(44px - 18px);
+      transition: background 180ms ease, border-color 180ms ease, transform 180ms ease;
     }
     @media (hover: hover) and (pointer: fine) {
-      .btn-play:hover { background: rgba(200, 169, 110, 0.1); }
+      .cta-btn:hover {
+        background: rgba(255, 255, 255, 0.14);
+        border-color: rgba(255, 255, 255, 0.55);
+        transform: translateY(-1px);
+      }
     }
-    .btn-soon {
-      border: 1px solid #3a3025;
-      color: #3a3025;
-      cursor: default;
+    .cta-btn:active { transform: translateY(0); }
+    .cta-btn { opacity: 0; }
+    #cta-row.visible .cta-btn:first-child {
+      opacity: 1;
+      transition: opacity 400ms ease;
+    }
+    #cta-row.visible .cta-btn:last-child {
+      opacity: 1;
+      transition: opacity 400ms ease 200ms;
+    }
+    #transition-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
       pointer-events: none;
+      opacity: 0;
+      transition: opacity 400ms ease, background 600ms ease;
     }
-    .footer {
-      margin-top: 60px;
-      font-size: 10px;
-      letter-spacing: 0.12em;
-      color: #3a3025;
-      text-transform: uppercase;
-      font-family: system-ui, sans-serif;
+    #transition-overlay.flash-vektor {
+      opacity: 1;
+      background: #0f0d08;
+      pointer-events: auto;
     }
-    .footer a {
-      color: #3a3025;
-      text-decoration: none;
-      transition: color 150ms ease;
+    #transition-overlay.flash-gunner {
+      opacity: 1;
+      background: #5BA3D9;
+      pointer-events: auto;
     }
-    @media (hover: hover) and (pointer: fine) {
-      .footer a:hover { color: #c8a96e; }
+    #transition-msg {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 101;
+      text-align: center;
+      opacity: 0;
+      transition: opacity 400ms ease;
+      width: 90%;
+      max-width: 640px;
+      padding: 20px;
+    }
+    #transition-msg.visible { opacity: 1; }
+    .msg-vektor {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(28px, 8vw, 48px);
+      color: #c8a96e;
+      letter-spacing: 0.25em;
+      text-indent: 0.25em;
+    }
+    .msg-gunner {
+      font-family: "Press Start 2P", ui-monospace, monospace;
+      font-size: clamp(10px, 2.8vw, 14px);
+      color: #FFE066;
+      line-height: 1.6;
     }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <h1 class="wordmark">V E K T O R</h1>
-    <p class="tagline">An arcade experiment in progressive design</p>
-    <hr class="rule">
-    <div class="cards">
-      <article class="card">
-        <div class="card-ver">V1</div>
-        <a class="card-link" href="/v1/" style="text-decoration:none;color:inherit;">
-          <h2 class="card-title">Pong</h2>
-        </a>
-        <p class="card-desc">Baseline. Amber trail. CPU vs you.</p>
-        <a class="btn-play" href="/v1/">Play</a>
-      </article>
-      <article class="card">
-        <div class="card-ver">V2</div>
-        <a class="card-link" href="/v2/" style="text-decoration:none;color:inherit;">
-          <h2 class="card-title">Pong Enhanced</h2>
-        </a>
-        <p class="card-desc">Best of 5. Seven schemes. Speed progression.</p>
-        <a class="btn-play" href="/v2/">Play</a>
-      </article>
-      <article class="card">
-        <div class="card-ver">V4</div>
-        <a class="card-link" href="/v4/" style="text-decoration:none;color:inherit;">
-          <h2 class="card-title">Asteroids</h2>
-        </a>
-        <p class="card-desc">Smart rocks. Three lives. Don&apos;t die.</p>
-        <a class="btn-play" href="/v4/">Play</a>
-      </article>
-      <article class="card">
-        <div class="card-ver">V3</div>
-        <h2 class="card-title" style="cursor:default;">Breakout</h2>
-        <p class="card-desc">Bricks, angles, chaos.</p>
-        <span class="btn-play btn-soon">Coming soon</span>
-      </article>
-    </div>
-    <footer class="footer">
-      A lab project · <a href="https://reachrota.com">reachrota.com</a>
-    </footer>
+  <div id="logo-canvas-wrap">
+    <canvas id="logo-canvas" width="640" height="480" aria-hidden="true"></canvas>
   </div>
+
+  <div id="dom-stage">
+    <div class="logo-stack" id="logo-stack" aria-hidden="true">
+      <div class="logo-line1" id="line-ator">
+        <span class="letter" data-i="0">A</span><span class="letter" data-i="1">t</span><span class="letter" data-i="2">o</span><span class="letter" data-i="3">r</span>
+      </div>
+      <div class="logo-line2" id="line-games">
+        <span class="letter" data-i="4">G</span><span class="letter" data-i="5">a</span><span class="letter" data-i="6">m</span><span class="letter" data-i="7">e</span><span class="letter" data-i="8">s</span>
+      </div>
+      <div class="logo-com" id="logo-com-line" style="opacity:0;transition:opacity 500ms ease">.com</div>
+    </div>
+    <div id="question-block">
+      <div id="typed-text" aria-live="polite"></div><span id="type-cursor" class="hidden"></span>
+    </div>
+    <p id="wargames-attrib">— WarGames, 1983</p>
+    <div id="cta-row">
+      <button type="button" class="cta-btn" id="btn-arcade">I'm here for arcade</button>
+      <button type="button" class="cta-btn" id="btn-gunner">I'm here for Gunner!</button>
+    </div>
+  </div>
+
+  <div id="transition-overlay"></div>
+  <div id="transition-msg"></div>
+
+  <script>
+(function () {
+  var canvas = document.getElementById('logo-canvas');
+  var ctx = canvas.getContext('2d');
+  var wrap = document.getElementById('logo-canvas-wrap');
+  var domStage = document.getElementById('dom-stage');
+  var lineAtor = document.querySelectorAll('#line-ator .letter');
+  var lineGames = document.querySelectorAll('#line-games .letter');
+  var logoCom = document.getElementById('logo-com-line');
+  var typedEl = document.getElementById('typed-text');
+  var cursorEl = document.getElementById('type-cursor');
+  var attribEl = document.getElementById('wargames-attrib');
+  var ctaRow = document.getElementById('cta-row');
+  var btnArcade = document.getElementById('btn-arcade');
+  var btnGunner = document.getElementById('btn-gunner');
+  var overlay = document.getElementById('transition-overlay');
+  var transMsg = document.getElementById('transition-msg');
+
+  var actx = null;
+  function tickSound() {
+    try {
+      if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+      if (actx.state === 'suspended') void actx.resume();
+      var sr = actx.sampleRate;
+      var n = Math.max(64, Math.floor(sr * 0.02));
+      var buf = actx.createBuffer(1, n, sr);
+      var d = buf.getChannelData(0);
+      for (var i = 0; i < n; i++) {
+        d[i] = Math.sin(2 * Math.PI * 2000 * i / sr) * 0.04 * (1 - i / n);
+      }
+      var src = actx.createBufferSource();
+      src.buffer = buf;
+      var g = actx.createGain();
+      g.gain.value = 0.6;
+      src.connect(g);
+      g.connect(actx.destination);
+      src.start();
+    } catch (e) {}
+  }
+
+  function drawAGMono(alpha) {
+    var w = canvas.width;
+    var h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+    ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = 'bold 160px Georgia, "Times New Roman", serif';
+    var cx = w / 2;
+    var cy = h / 2;
+    var letterW = ctx.measureText('A').width;
+    var gap = -letterW * 0.08;
+    var total = letterW * 2 + gap;
+    ctx.fillText('A', cx - total / 2 + letterW / 2, cy);
+    ctx.fillText('G', cx - total / 2 + letterW + gap + letterW / 2, cy);
+    ctx.globalAlpha = 1;
+  }
+
+  function runAct1(done) {
+    var t0 = performance.now();
+    function frame(now) {
+      var t = now - t0;
+      var a = Math.min(1, t / 600);
+      drawAGMono(a);
+      if (t < 600) requestAnimationFrame(frame);
+      else {
+        drawAGMono(1);
+        done();
+      }
+    }
+    drawAGMono(0);
+    requestAnimationFrame(frame);
+  }
+
+  function runAct2(done) {
+    wrap.style.transition = 'opacity 400ms ease';
+    wrap.style.opacity = '0';
+    setTimeout(function () {
+      wrap.style.display = 'none';
+      domStage.classList.add('visible');
+      var logoStack = document.getElementById('logo-stack');
+      var letters = [].slice.call(document.querySelectorAll('#logo-stack .letter'));
+      var dur = 1500;
+      var order = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () {
+          logoStack.classList.add('spread');
+        });
+      });
+      order.forEach(function (idx, j) {
+        setTimeout(function () {
+          letters[idx].classList.add('show');
+        }, (j / order.length) * (dur * 0.88));
+      });
+      setTimeout(function () {
+        logoCom.style.opacity = '1';
+      }, dur - 400);
+      setTimeout(done, dur + 80);
+    }, 420);
+  }
+
+  function runAct3(done) {
+    var phrase = 'Shall we play a game?';
+    attribEl.classList.add('visible');
+    cursorEl.classList.remove('hidden');
+    cursorEl.style.visibility = 'visible';
+    cursorEl.style.animation = 'none';
+    setTimeout(function () {
+      cursorEl.style.visibility = 'hidden';
+      setTimeout(function () {
+        cursorEl.style.visibility = 'visible';
+        cursorEl.style.animation = 'blink 0.85s step-end infinite';
+        var i = 0;
+        function typeChar() {
+          if (i < phrase.length) {
+            typedEl.textContent += phrase.charAt(i);
+            i++;
+            tickSound();
+            setTimeout(typeChar, 40);
+          } else {
+            var blinks = 0;
+            function blinkC() {
+              blinks++;
+              if (blinks <= 6) {
+                cursorEl.style.visibility = blinks % 2 ? 'visible' : 'hidden';
+                setTimeout(blinkC, 400);
+              } else {
+                cursorEl.classList.add('hidden');
+                ctaRow.classList.add('visible');
+                done();
+              }
+            }
+            setTimeout(blinkC, 300);
+          }
+        }
+        typeChar();
+      }, 120);
+    }, 420);
+  }
+
+  function loadPressStart(cb) {
+    if (document.getElementById('ps2p-font')) {
+      cb();
+      return;
+    }
+    var l = document.createElement('link');
+    l.id = 'ps2p-font';
+    l.rel = 'stylesheet';
+    l.href = 'https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap';
+    l.onload = function () { cb(); };
+    l.onerror = function () { cb(); };
+    document.head.appendChild(l);
+    setTimeout(cb, 280);
+  }
+
+  function goArcade() {
+    domStage.classList.add('faded');
+    overlay.className = 'flash-vektor';
+    transMsg.innerHTML = '<div class="msg-vektor">V E K T O R</div>';
+    transMsg.classList.add('visible');
+    setTimeout(function () {
+      window.location.href = '/vektor/';
+    }, 800);
+  }
+
+  function goGunner() {
+    loadPressStart(function () {
+      domStage.classList.add('faded');
+      overlay.className = 'flash-gunner';
+      transMsg.innerHTML = '<div class="msg-gunner">PROFESSOR GUNNER\'S<br>SCHOOLHOUSE</div>';
+      transMsg.classList.add('visible');
+      setTimeout(function () {
+        window.location.href = '/gunner/';
+      }, 800);
+    });
+  }
+
+  btnArcade.addEventListener('click', goArcade);
+  btnGunner.addEventListener('click', goGunner);
+
+  document.addEventListener('touchstart', function () {
+    if (!actx) try { actx = new (window.AudioContext || window.webkitAudioContext)(); void actx.resume(); } catch (e) {}
+  }, { once: true, passive: true });
+
+  runAct1(function () {
+    setTimeout(function () {
+      runAct2(function () {
+        setTimeout(function () {
+          runAct3(function () {});
+        }, 400);
+      });
+    }, 900);
+  });
+})();
+  </script>
 </body>
 </html>

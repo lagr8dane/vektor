@@ -336,10 +336,28 @@
         border-color: rgba(255, 255, 255, 0.48);
       }
     }
+    .atorgames-brand {
+      position: absolute;
+      top: 18px;
+      left: 20px;
+      z-index: 40;
+      cursor: pointer;
+      opacity: 0.7;
+      transition: opacity 200ms ease;
+      line-height: 1.15;
+    }
+    .atorgames-brand:hover { opacity: 1; }
+    .atorgames-name { display: block; font-family: Georgia, "Times New Roman", serif; font-size: 13px; color: #c8a96e; }
+    .atorgames-com { display: block; font-family: Georgia, "Times New Roman", serif; font-size: 9px; color: #6b5c3e; margin-top: 2px; }
+    .hub-back { left: 118px; }
   </style>
 </head>
 <body>
-  <a class="hub-back" href="/">← vektor</a>
+  <div class="atorgames-brand" onclick="goHome()" role="link" tabindex="0" aria-label="AtorGames home" onkeydown="if(event.key==='Enter'||event.key===' ')goHome()">
+    <span class="atorgames-name">AtorGames</span>
+    <span class="atorgames-com">.com</span>
+  </div>
+  <a class="hub-back" href="/vektor/">← vektor</a>
   <button type="button" class="sound-toggle" id="soundToggle" aria-pressed="true" aria-label="Toggle game sound">Sound on</button>
   <div class="top-bar hidden" id="topBar">
     <div class="scheme-name" id="schemeLabel">VEKTOR</div>
@@ -1320,6 +1338,21 @@
   setStatus('');
   requestAnimationFrame(tick);
 })();
+  </script>
+  <script>
+  function goHome() {
+    var o = document.createElement('div');
+    o.setAttribute('aria-hidden', 'true');
+    o.style.cssText = 'position:fixed;inset:0;background:#000;opacity:0;z-index:100000;transition:opacity 500ms ease;pointer-events:none';
+    document.body.appendChild(o);
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        o.style.opacity = '1';
+        o.style.pointerEvents = 'auto';
+      });
+    });
+    setTimeout(function () { window.location.href = '/'; }, 500);
+  }
   </script>
 </body>
 </html>
