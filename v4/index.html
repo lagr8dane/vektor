@@ -443,6 +443,15 @@
       }
     } catch (e) {}
   }
+  function ensureMasterGain(a) {
+    if (!a._vMaster) {
+      var g = a.createGain();
+      g.gain.value = 0.9;
+      g.connect(a.destination);
+      a._vMaster = g;
+    }
+    return a._vMaster;
+  }
   function getA() {
     if (!actx) {
       var Ctx = window.AudioContext || window.webkitAudioContext;
@@ -455,11 +464,15 @@
           actx = new Ctx();
         }
       }
+      ensureMasterGain(actx);
+    } else if (!actx._vMaster) {
+      ensureMasterGain(actx);
     }
     return actx;
   }
   function playSilentPrime(a) {
     try {
+      ensureMasterGain(a);
       var sr = a.sampleRate || 44100;
       var frames = Math.max(256, Math.floor(sr * 0.04));
       var buf = a.createBuffer(1, frames, sr);
@@ -468,18 +481,22 @@
       var g = a.createGain();
       g.gain.value = 0.0001;
       s.connect(g);
-      g.connect(a.destination);
+      g.connect(a._vMaster);
       s.start(0);
     } catch (e) {}
   }
   function primeAudioFromGesture() {
     if (!soundOn) return;
-    unlockHtmlAudioFromGesture();
     try {
       var a = getA();
-      var after = function () { playSilentPrime(a); };
-      if (a.state === 'suspended') {
-        a.resume().then(after).catch(after);
+      void a.resume();
+    } catch (e) {}
+    unlockHtmlAudioFromGesture();
+    try {
+      var a2 = getA();
+      var after = function () { playSilentPrime(a2); };
+      if (a2.state === 'suspended') {
+        a2.resume().then(after).catch(after);
       } else {
         after();
       }
@@ -494,8 +511,27 @@
   document.addEventListener('mousedown', function () { primeAudioFromGesture(); }, { capture: true, passive: true });
   document.addEventListener('keydown', function () { primeAudioFromGesture(); }, { capture: true, passive: true });
   document.addEventListener('visibilitychange', function () {
-    if (!document.hidden && soundOn && actx && actx.state === 'suspended') void actx.resume();
+    var el = document.getElementById('iosAudioGate');
+    if (document.hidden) {
+      if (el) el.dataset.primed = '0';
+    } else {
+      if (soundOn) {
+        primeAudioFromGesture();
+        if (actx && actx.state === 'suspended') void actx.resume();
+      }
+    }
   });
+  window.addEventListener('pageshow', function () {
+    if (soundOn) primeAudioFromGesture();
+  });
+  window.addEventListener('focus', function () {
+    if (soundOn && actx && actx.state === 'suspended') void actx.resume();
+  });
+  document.addEventListener('click', function () {
+    if (soundOn && actx) {
+      try { void actx.resume(); } catch (e) {}
+    }
+  }, true);
   document.body.addEventListener('touchstart', function () { primeAudioFromGesture(); }, { capture: true, passive: false });
   var canvasWrapEl = document.getElementById('canvasWrap');
   if (canvasWrapEl) {
@@ -507,6 +543,38 @@
       if (t === 'square' || t === 'sawtooth') return 'sine';
     }
     return t;
+  }
+
+  var beepBufCache = Object.create(null);
+  function makeBeepBuffer(a, f, waveType, d, v) {
+    var sr = a.sampleRate;
+    var tail = 0.048;
+    var n = Math.max(128, Math.floor(sr * (Math.max(d, 0.02) + tail)));
+    var buf = a.createBuffer(1, n, sr);
+    var ch = buf.getChannelData(0);
+    var phase = 0;
+    var dPhase = (2 * Math.PI * f) / sr;
+    var volBoost = isTouch || iosLikeAudio ? 1.45 : 1;
+    var amp = Math.min(0.95, Math.max(v, 0.0001) * volBoost);
+    for (var i = 0; i < n; i++) {
+      var tSec = i / sr;
+      var atk = Math.min(1, tSec / 0.005);
+      var dec = tSec < d ? 1 : Math.max(0, 1 - (tSec - d) / tail);
+      var env = atk * dec;
+      var w;
+      if (waveType === 'square') {
+        w = Math.sin(phase) >= 0 ? 0.75 : -0.75;
+      } else if (waveType === 'sawtooth') {
+        var cyc = (phase / (2 * Math.PI)) % 1;
+        w = 2 * cyc - 1;
+      } else {
+        w = Math.sin(phase);
+      }
+      ch[i] = w * amp * env;
+      phase += dPhase;
+      if (phase > Math.PI * 2000) phase -= Math.PI * 2000;
+    }
+    return buf;
   }
 
   st.addEventListener('pointerdown', function (e) {
@@ -543,49 +611,39 @@
   }
 
   function beep(f, waveType, d, v) {
-    if (!soundOn || !actx) return;
-    waveType = mapWaveForBuffer(waveType);
-    var a = actx;
-    var sr = a.sampleRate;
-    var tail = 0.045;
-    var n = Math.max(128, Math.floor(sr * (Math.max(d, 0.02) + tail)));
-    var buf = a.createBuffer(1, n, sr);
-    var ch = buf.getChannelData(0);
-    var phase = 0;
-    var dPhase = (2 * Math.PI * f) / sr;
-    var volBoost = isTouch || iosLikeAudio ? 1.45 : 1;
-    var amp = Math.min(0.95, Math.max(v, 0.0001) * volBoost);
-    for (var i = 0; i < n; i++) {
-      var tSec = i / sr;
-      var atk = Math.min(1, tSec / 0.005);
-      var dec = tSec < d ? 1 : Math.max(0, 1 - (tSec - d) / tail);
-      var env = atk * dec;
-      var w;
-      if (waveType === 'square') {
-        w = Math.sin(phase) >= 0 ? 0.75 : -0.75;
-      } else if (waveType === 'sawtooth') {
-        var cyc = (phase / (2 * Math.PI)) % 1;
-        w = 2 * cyc - 1;
-      } else {
-        w = Math.sin(phase);
-      }
-      ch[i] = w * amp * env;
-      phase += dPhase;
-      if (phase > Math.PI * 2000) phase -= Math.PI * 2000;
+    if (!soundOn) return;
+    var a = getA();
+    ensureMasterGain(a);
+    var wt = mapWaveForBuffer(waveType);
+    var cacheKey = a.sampleRate + '|' + Math.round(f) + '|' + wt + '|' + d + '|' + v;
+    var buf = beepBufCache[cacheKey];
+    if (!buf) {
+      buf = makeBeepBuffer(a, f, wt, d, v);
+      beepBufCache[cacheKey] = buf;
     }
-    var run = function () {
+    var master = a._vMaster;
+    var play = function () {
       try {
+        if (a.state !== 'running') return;
         var src = a.createBufferSource();
         src.buffer = buf;
         var g = a.createGain();
-        g.gain.value = isTouch || iosLikeAudio ? 1.1 : 1;
+        g.gain.value = isTouch || iosLikeAudio ? 1.18 : 1;
         src.connect(g);
-        g.connect(a.destination);
-        src.start(0);
+        g.connect(master);
+        var t0 = a.currentTime + 0.002;
+        src.start(t0);
       } catch (e) {}
     };
-    if (a.state === 'running') run();
-    else void a.resume().then(run).catch(run);
+    try {
+      void a.resume();
+    } catch (e) {}
+    if (a.state === 'running') play();
+    else {
+      var pr = a.resume();
+      if (pr && typeof pr.then === 'function') pr.then(play).catch(play);
+      else requestAnimationFrame(function () { requestAnimationFrame(play); });
+    }
   }
 
   var phase = 'idle';
