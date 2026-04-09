@@ -146,18 +146,20 @@
     canvas.can-tap { cursor: pointer; }
     .pause-ii {
       display: none;
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      width: 36px;
-      height: 36px;
+      flex: 0 0 44px;
+      width: 44px;
+      height: 44px;
+      min-width: 44px;
+      align-self: center;
+      margin: 0 2px;
       z-index: 15;
       border: 1px solid rgba(200,169,110,0.25);
       background: rgba(200,169,110,0.06);
       color: #c8a96e;
-      font-size: 11px;
+      font-size: 9px;
       font-family: system-ui, sans-serif;
       cursor: pointer;
+      border-radius: 3px;
     }
     .pause-ii.show { display: flex; align-items: center; justify-content: center; }
     .pause-ii:active { background: rgba(200,169,110,0.18); }
@@ -212,19 +214,19 @@
       align-items: stretch;
     }
     .touch-rot-side {
-      flex: 0 0 13%;
-      max-width: 76px;
-      min-width: 44px;
+      flex: 0 0 19%;
+      max-width: 120px;
+      min-width: 64px;
       background: rgba(200,169,110,0.06);
       border: none;
       border-right: 1px solid #2a2318;
       color: #c8a96e;
-      font-size: 8px;
-      letter-spacing: 0.08em;
+      font-size: 11px;
+      letter-spacing: 0.06em;
       text-transform: uppercase;
       font-family: system-ui, sans-serif;
-      padding: 4px 2px;
-      line-height: 1.15;
+      padding: 8px 4px;
+      line-height: 1.2;
     }
     .touch-rot-side:last-of-type {
       border-right: none;
@@ -258,7 +260,6 @@
     <div class="canvas-wrap" id="canvasWrap">
       <div class="scanlines" id="scanlines" style="display:none"></div>
       <canvas id="c" width="800" height="600"></canvas>
-      <button type="button" class="pause-ii" id="btnPause" aria-label="Pause">II</button>
     </div>
     <div class="palette-heading" id="paletteHeading">Palette</div>
     <div class="pills" id="pills"></div>
@@ -272,11 +273,12 @@
     </div>
     <div class="touch-bar" id="touchBar">
       <div class="touch-split">
-        <button type="button" class="touch-rot-side" id="tRotL">◀ ROT<br>L</button>
+        <button type="button" class="touch-rot-side" id="tRotL">Left</button>
         <button type="button" class="touch-act" id="tThrust">Thrust</button>
         <button type="button" class="touch-act" id="tHyper">Hyper</button>
+        <button type="button" class="pause-ii" id="btnPause" aria-label="Pause">II</button>
         <button type="button" class="touch-act" id="tFire">Fire</button>
-        <button type="button" class="touch-rot-side" id="tRotR">ROT<br>R ▶</button>
+        <button type="button" class="touch-rot-side" id="tRotR">Right</button>
       </div>
     </div>
   </div>
@@ -623,7 +625,7 @@
     if (paletteHeadingMobiEl) paletteHeadingMobiEl.style.color = colorWithAlpha(col.text, 0.5);
     if (touchBar.classList.contains('show')) {
       touchBar.style.borderTopColor = colorWithAlpha(col.text, 0.38);
-      touchBar.querySelectorAll('.touch-act, .touch-rot-side').forEach(function (btn) {
+      touchBar.querySelectorAll('.touch-act, .touch-rot-side, .pause-ii').forEach(function (btn) {
         btn.style.color = colorWithAlpha(col.text, 0.88);
         btn.style.borderColor = colorWithAlpha(col.text, 0.22);
         btn.style.background = colorWithAlpha(col.text, 0.07);
@@ -1013,8 +1015,8 @@
     ctx.font = '11px system-ui, sans-serif';
     ctx.letterSpacing = '0.08em';
     if (isTouch) {
-      ctx.fillText('◀ ROT L | THRUST | HYPER | FIRE | ROT R ▶', 100, iy + 16);
-      ctx.fillText('PAUSE     II (TOP RIGHT)', 100, iy + 32);
+      ctx.fillText('LEFT | THRUST | HYPER | II | FIRE | RIGHT', 100, iy + 16);
+      ctx.fillText('PAUSE     II (BOTTOM BAR, CENTER)', 100, iy + 32);
       ctx.fillText('PALETTE   ROW ABOVE (SWIPE ◀ ▶)', 100, iy + 48);
       ctx.font = '10px system-ui, sans-serif';
       ctx.fillText('HUNTER   enemy ship (dashed) chases you — later waves', 100, iy + 64);
