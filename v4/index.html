@@ -16,7 +16,18 @@
       position: relative;
       transition: background 0.2s ease;
     }
-    body.touch-ui { padding-top: 20px; padding-bottom: env(safe-area-inset-bottom, 0px); }
+    body.touch-ui {
+      padding-top: max(16px, env(safe-area-inset-top, 0px));
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    body.touch-ui .hub-back {
+      top: max(12px, env(safe-area-inset-top, 0px) + 4px);
+      left: max(16px, env(safe-area-inset-left, 0px) + 8px);
+    }
+    body.touch-ui .sound-toggle {
+      top: max(10px, env(safe-area-inset-top, 0px) + 2px);
+      right: max(12px, env(safe-area-inset-right, 0px) + 8px);
+    }
     .palette-heading {
       width: 100%;
       text-align: center;
@@ -86,15 +97,21 @@
       width: min(
         100vw,
         100dvw,
-        max(280px, calc((100svh - env(safe-area-inset-bottom, 0px) - 118px) * 800 / 600)),
+        max(280px, calc((100svh - env(safe-area-inset-bottom, 0px) - 172px) * 800 / 600)),
         1440px
       );
+      margin-top: 52px;
     }
     .canvas-wrap {
       position: relative;
       width: 100%;
       margin-top: 8px;
     }
+    body.touch-ui .canvas-wrap { margin-top: 4px; }
+    body.touch-ui .palette-heading { margin-top: 18px; }
+    body.touch-ui .palette-heading-mobi { margin-top: 16px; }
+    body.touch-ui .pill-mobi { margin-top: 16px; margin-bottom: 10px; }
+    body.touch-ui .pills { margin-top: 18px; margin-bottom: 14px; }
     .scanlines {
       pointer-events: none;
       position: absolute;
