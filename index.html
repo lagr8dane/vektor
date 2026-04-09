@@ -114,24 +114,6 @@
     .term-line { margin-bottom: 0.35em; }
     .term-dim { color: #1a6; text-shadow: none; }
     .term-prompt { color: #2d8; }
-    #question-line {
-      margin-top: 1em;
-      min-height: 1.6em;
-      font-size: clamp(14px, 3.8vw, 17px);
-      letter-spacing: 0.04em;
-    }
-    #type-cursor {
-      display: inline-block;
-      width: 0.55em;
-      height: 1.1em;
-      background: #33ff66;
-      margin-left: 2px;
-      vertical-align: text-bottom;
-      animation: curBlink 0.9s step-end infinite;
-      box-shadow: 0 0 8px #33ff66;
-    }
-    #type-cursor.off { display: none; }
-    @keyframes curBlink { 50% { opacity: 0; } }
     #wargames-attrib {
       font-family: Arial, sans-serif;
       font-size: 10px;
@@ -239,15 +221,14 @@
   <div id="terminal-wrap">
     <div class="term-chrome">
       <div class="term-dots" aria-hidden="true"><span></span><span></span><span></span></div>
-      <div class="term-title">WOPR — ATORGAMES UPLINK</div>
+      <div class="term-title">ATORGAMES — REMOTE SESSION</div>
       <div style="width:46px"></div>
     </div>
     <div class="term-screen-outer">
       <div class="term-screen">
         <div class="term-vignette"></div>
         <div class="term-scanlines"></div>
-        <div id="term-out"></div>
-        <div id="question-line" aria-live="polite"><span id="typed-q"></span><span id="type-cursor" class="off"></span></div>
+        <div id="term-out" aria-live="polite"></div>
         <p id="wargames-attrib">— WarGames, 1983</p>
         <div id="cta-row">
           <button type="button" class="cta-btn" id="btn-arcade">I'm here for arcade</button>
@@ -264,8 +245,6 @@
 (function () {
   var wrap = document.getElementById('terminal-wrap');
   var out = document.getElementById('term-out');
-  var typedQ = document.getElementById('typed-q');
-  var cursorEl = document.getElementById('type-cursor');
   var attribEl = document.getElementById('wargames-attrib');
   var ctaRow = document.getElementById('cta-row');
   var btnArcade = document.getElementById('btn-arcade');
@@ -318,9 +297,13 @@
 
   var bootLines = [
     { text: '*** UPLINK ESTABLISHED ***', ms: 22, dim: true, sound: false },
-    { text: 'WOPR_SUBSYSTEM ................ ONLINE', ms: 12, dim: true, sound: false },
+    { text: 'CARRIER ....................... LOCKED', ms: 12, dim: true, sound: false },
+    { text: 'HANDSHAKE ..................... OK', ms: 12, dim: true, sound: false },
+    { text: 'PRIMARY BUS ................... SYNC', ms: 12, dim: true, sound: false },
+    { text: 'KERNEL ........................ READY', ms: 12, dim: true, sound: false },
     { text: 'SESSION ....................... GUEST', ms: 12, dim: true, sound: false },
     { text: 'MEM: 64K  BUFFER OK  CHECKSUM OK', ms: 10, dim: true, sound: false },
+    { text: 'AWAITING INPUT...', ms: 14, dim: true, sound: false },
     { text: '', ms: 0, dim: true, sound: false },
     { text: '> HELLO.', ms: 35, dim: false, sound: true }
   ];
@@ -345,33 +328,16 @@
   }
 
   function runQuestion(done) {
-    cursorEl.classList.remove('off');
-    var phrase = 'Shall we play a game?';
-    attribEl.classList.add('visible');
-    var j = 0;
-    function qStep() {
-      if (j < phrase.length) {
-        typedQ.textContent += phrase.charAt(j);
-        j++;
-        tickSound();
-        setTimeout(qStep, 42);
-      } else {
-        var blinks = 0;
-        function blinkC() {
-          blinks++;
-          if (blinks <= 6) {
-            cursorEl.style.visibility = blinks % 2 ? 'visible' : 'hidden';
-            setTimeout(blinkC, 380);
-          } else {
-            cursorEl.classList.add('off');
-            ctaRow.classList.add('visible');
-            done();
-          }
-        }
-        setTimeout(blinkC, 280);
-      }
-    }
-    setTimeout(qStep, 400);
+    var div = document.createElement('div');
+    div.className = 'term-line term-prompt';
+    out.appendChild(div);
+    typeInto(div, '> Shall we play a game?', 35, function () {
+      attribEl.classList.add('visible');
+      setTimeout(function () {
+        ctaRow.classList.add('visible');
+        done();
+      }, 450);
+    }, true);
   }
 
   function loadPressStart(cb) {
