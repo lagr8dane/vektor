@@ -16,7 +16,32 @@
       position: relative;
       transition: background 0.2s ease;
     }
-    body.touch-ui { padding-top: 36px; padding-bottom: env(safe-area-inset-bottom, 0px); }
+    body.touch-ui { padding-top: 20px; padding-bottom: env(safe-area-inset-bottom, 0px); }
+    .palette-heading {
+      width: 100%;
+      text-align: center;
+      font-family: system-ui, sans-serif;
+      font-size: 9px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: #5a4d38;
+      margin-top: 10px;
+    }
+    @media (max-width: 480px) {
+      .palette-heading { display: none; }
+    }
+    .palette-heading-mobi {
+      display: none;
+      width: 100%;
+      text-align: center;
+      font-family: system-ui, sans-serif;
+      font-size: 9px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: #5a4d38;
+      margin-top: 6px;
+    }
+    .palette-heading-mobi.show { display: block; }
     .hub-back {
       position: absolute;
       top: 20px;
@@ -54,14 +79,15 @@
       cursor: pointer;
     }
     .wrap-main {
-      width: min(100vw, 1024px);
-      max-width: 1024px;
+      width: min(100vw, 100dvw, 1440px);
+      max-width: 1440px;
     }
     body.touch-ui .wrap-main {
       width: min(
         100vw,
-        max(260px, calc((100vh - env(safe-area-inset-bottom, 0px) - 200px) * 800 / 600)),
-        1024px
+        100dvw,
+        max(280px, calc((100svh - env(safe-area-inset-bottom, 0px) - 118px) * 800 / 600)),
+        1440px
       );
     }
     .canvas-wrap {
@@ -189,13 +215,16 @@
 <body>
   <a class="hub-back" href="/">← vektor</a>
   <button type="button" class="sound-toggle" id="soundToggle" aria-pressed="true">Sound on</button>
+  <audio id="iosAudioGate" playsinline preload="auto" style="position:absolute;width:0;height:0;opacity:0;pointer-events:none" aria-hidden="true"></audio>
   <div class="wrap-main">
     <div class="canvas-wrap" id="canvasWrap">
       <div class="scanlines" id="scanlines" style="display:none"></div>
       <canvas id="c" width="800" height="600"></canvas>
       <button type="button" class="pause-ii" id="btnPause" aria-label="Pause">II</button>
     </div>
+    <div class="palette-heading" id="paletteHeading">Palette</div>
     <div class="pills" id="pills"></div>
+    <div class="palette-heading-mobi" id="paletteHeadingMobi">Palette</div>
     <div class="pill-mobi" id="pillMobi">
       <div class="pill-mobi-inner">
         <button type="button" class="pill-nav" id="pillPrev">◀</button>
@@ -207,8 +236,8 @@
       <div class="touch-split">
         <button type="button" class="touch-rot-side" id="tRotL">◀ ROT<br>L</button>
         <button type="button" class="touch-act" id="tThrust">Thrust</button>
-        <button type="button" class="touch-act" id="tFire">Fire</button>
         <button type="button" class="touch-act" id="tHyper">Hyper</button>
+        <button type="button" class="touch-act" id="tFire">Fire</button>
         <button type="button" class="touch-rot-side" id="tRotR">ROT<br>R ▶</button>
       </div>
     </div>
@@ -293,7 +322,10 @@
     btnPause.classList.add('show');
     canvas.classList.add('can-tap');
   }
-  if (isNarrow) pillMobi.classList.add('show');
+  if (isNarrow) {
+    pillMobi.classList.add('show');
+    document.getElementById('paletteHeadingMobi').classList.add('show');
+  }
 
   SCHEMES.forEach(function (s, i) {
     var b = document.createElement('button');
@@ -306,7 +338,6 @@
   function setSch(i) {
     si = (i + SCHEMES.length) % SCHEMES.length;
     var col = resolve(performance.now());
-    document.body.style.background = col.bg;
     updateScan(col);
     pillsEl.querySelectorAll('.pill').forEach(function (p, j) {
       p.classList.toggle('active', j === si);
@@ -344,6 +375,7 @@
   syncS();
 
   var actx = null;
+  var iosUnlockUrl = null;
   var iosLikeAudio =
     /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -351,29 +383,86 @@
     iosLikeAudio ||
     (/Safari/i.test(navigator.userAgent) &&
       !/Chrome|CriOS|Chromium|Edg|OPR|Android|FxiOS/i.test(navigator.userAgent));
+  function buildSilentWavBlob() {
+    var sampleRate = 44100;
+    var numSamples = Math.floor(sampleRate * 0.06);
+    var dataSize = numSamples * 2;
+    var buffer = new ArrayBuffer(44 + dataSize);
+    var v = new DataView(buffer);
+    var p = 0;
+    function writeStr(s) {
+      for (var i = 0; i < s.length; i++) v.setUint8(p++, s.charCodeAt(i));
+    }
+    writeStr('RIFF');
+    v.setUint32(p, 36 + dataSize, true); p += 4;
+    writeStr('WAVE');
+    writeStr('fmt ');
+    v.setUint32(p, 16, true); p += 4;
+    v.setUint16(p, 1, true); p += 2;
+    v.setUint16(p, 1, true); p += 2;
+    v.setUint32(p, sampleRate, true); p += 4;
+    v.setUint32(p, sampleRate * 2, true); p += 4;
+    v.setUint16(p, 2, true); p += 2;
+    v.setUint16(p, 16, true); p += 2;
+    writeStr('data');
+    v.setUint32(p, dataSize, true); p += 4;
+    for (var j = 0; j < numSamples; j++) v.setInt16(p + j * 2, 0, true);
+    return new Blob([buffer], { type: 'audio/wav' });
+  }
+  function unlockHtmlAudioFromGesture() {
+    var el = document.getElementById('iosAudioGate');
+    if (!el || el.dataset.primed === '1') return;
+    try {
+      if (!iosUnlockUrl) iosUnlockUrl = URL.createObjectURL(buildSilentWavBlob());
+      el.src = iosUnlockUrl;
+      el.volume = 0.12;
+      var pl = el.play();
+      if (pl && typeof pl.then === 'function') {
+        pl.then(function () { el.dataset.primed = '1'; el.pause(); el.currentTime = 0; }).catch(function () {});
+      } else {
+        el.dataset.primed = '1';
+      }
+    } catch (e) {}
+  }
   function getA() {
-    if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+    if (!actx) {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (iosLikeAudio) {
+        actx = new Ctx();
+      } else {
+        try {
+          actx = new Ctx({ latencyHint: 'interactive' });
+        } catch (e) {
+          actx = new Ctx();
+        }
+      }
+    }
     return actx;
   }
   function playSilentPrime(a) {
     try {
       var sr = a.sampleRate || 44100;
-      var frames = Math.max(128, Math.floor(sr * 0.02));
+      var frames = Math.max(256, Math.floor(sr * 0.04));
       var buf = a.createBuffer(1, frames, sr);
       var s = a.createBufferSource();
       s.buffer = buf;
-      s.connect(a.destination);
+      var g = a.createGain();
+      g.gain.value = 0.0001;
+      s.connect(g);
+      g.connect(a.destination);
       s.start(0);
     } catch (e) {}
   }
   function primeAudioFromGesture() {
     if (!soundOn) return;
+    unlockHtmlAudioFromGesture();
     try {
       var a = getA();
+      var after = function () { playSilentPrime(a); };
       if (a.state === 'suspended') {
-        a.resume().then(function () { playSilentPrime(a); }).catch(function () { playSilentPrime(a); });
+        a.resume().then(after).catch(after);
       } else {
-        playSilentPrime(a);
+        after();
       }
     } catch (e) {}
   }
@@ -406,25 +495,52 @@
     if (soundOn) primeAudioFromGesture();
   });
 
+  var hubBackEl = document.querySelector('.hub-back');
+  var paletteHeadingEl = document.getElementById('paletteHeading');
+  var paletteHeadingMobiEl = document.getElementById('paletteHeadingMobi');
+  function syncChromeColors(col) {
+    document.documentElement.style.backgroundColor = col.bg;
+    document.body.style.backgroundColor = col.bg;
+    if (hubBackEl) hubBackEl.style.color = colorWithAlpha(col.text, 0.4);
+    st.style.borderColor = colorWithAlpha(col.text, 0.42);
+    st.style.color = colorWithAlpha(col.text, 0.95);
+    btnPause.style.borderColor = colorWithAlpha(col.text, 0.32);
+    btnPause.style.color = colorWithAlpha(col.text, 0.92);
+    if (paletteHeadingEl) paletteHeadingEl.style.color = colorWithAlpha(col.text, 0.5);
+    if (paletteHeadingMobiEl) paletteHeadingMobiEl.style.color = colorWithAlpha(col.text, 0.5);
+    if (touchBar.classList.contains('show')) {
+      touchBar.style.borderTopColor = colorWithAlpha(col.text, 0.38);
+      touchBar.querySelectorAll('.touch-act, .touch-rot-side').forEach(function (btn) {
+        btn.style.color = colorWithAlpha(col.text, 0.88);
+        btn.style.borderColor = colorWithAlpha(col.text, 0.22);
+        btn.style.background = colorWithAlpha(col.text, 0.07);
+      });
+    }
+  }
+
   function beep(f, t, d, v) {
     if (!soundOn || !actx) return;
     t = mapOscType(t);
     var run = function () {
-      var t0 = actx.currentTime;
+      var t0 = Math.max(actx.currentTime, 0.001);
       var o = actx.createOscillator();
       var g = actx.createGain();
       o.type = t;
       o.frequency.setValueAtTime(f, t0);
-      g.gain.setValueAtTime(0, t0);
-      g.gain.linearRampToValueAtTime(v, t0 + 0.01);
-      g.gain.exponentialRampToValueAtTime(0.001, t0 + d);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.linearRampToValueAtTime(Math.max(v, 0.0002), t0 + 0.012);
+      try {
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + Math.max(d, 0.02));
+      } catch (e) {
+        g.gain.linearRampToValueAtTime(0.0001, t0 + Math.max(d, 0.02) + 0.02);
+      }
       o.connect(g);
       g.connect(actx.destination);
       o.start(t0);
-      o.stop(t0 + d + 0.05);
+      o.stop(t0 + d + 0.08);
     };
     if (actx.state === 'running') run();
-    else void actx.resume().then(run);
+    else void actx.resume().then(run).catch(run);
   }
 
   var phase = 'idle';
@@ -515,15 +631,23 @@
   }
 
   function wrap(o) {
-    if (o.x < -60) o.x = W + 60;
-    if (o.x > W + 60) o.x = -60;
-    if (o.y < -60) o.y = H + 60;
-    if (o.y > H + 60) o.y = -60;
+    o.x = ((o.x % W) + W) % W;
+    o.y = ((o.y % H) + H) % H;
   }
 
-  function dist(a, b) {
-    var dx = a.x - b.x, dy = a.y - b.y;
-    return Math.sqrt(dx * dx + dy * dy);
+  function toroidalDelta(ax, ay, bx, by) {
+    var dx = bx - ax;
+    var dy = by - ay;
+    if (dx > W * 0.5) dx -= W;
+    if (dx < -W * 0.5) dx += W;
+    if (dy > H * 0.5) dy -= H;
+    if (dy < -H * 0.5) dy += H;
+    return { dx: dx, dy: dy };
+  }
+
+  function distToroidal(a, b) {
+    var d = toroidalDelta(a.x, a.y, b.x, b.y);
+    return Math.sqrt(d.dx * d.dx + d.dy * d.dy);
   }
 
   function explode(x, y, col, n) {
@@ -746,15 +870,16 @@
     ctx.font = '11px system-ui, sans-serif';
     ctx.letterSpacing = '0.08em';
     if (isTouch) {
-      ctx.fillText('◀ ROT L | THRUST | FIRE | HYPER | ROT R ▶', 100, iy + 16);
-      ctx.fillText('(ONE ROW — HYPER NOT UNDER FIRE)', 100, iy + 32);
-      ctx.fillText('PAUSE     II (TOP RIGHT)', 100, iy + 48);
+      ctx.fillText('◀ ROT L | THRUST | HYPER | FIRE | ROT R ▶', 100, iy + 16);
+      ctx.fillText('PAUSE     II (TOP RIGHT)', 100, iy + 32);
+      ctx.fillText('PALETTE   ROW ABOVE (SWIPE ◀ ▶)', 100, iy + 48);
     } else {
       ctx.fillText('←  →   OR   A  D', 100, iy + 16);
       ctx.fillText('THRUST    ↑   OR   W', 100, iy + 32);
       ctx.fillText('FIRE      SPACE', 100, iy + 48);
       ctx.fillText('HYPER     H', 100, iy + 64);
       ctx.fillText('PAUSE     P', 100, iy + 80);
+      ctx.fillText('PALETTE   T OR ROW BELOW', 100, iy + 96);
     }
     ctx.letterSpacing = '0';
     var blink = 0.3 + 0.7 * (0.5 + 0.5 * Math.sin(now / 1200 * Math.PI * 2));
@@ -816,6 +941,7 @@
     lastTick = now;
     var f = dt / FRAME_MS;
     var col = resolve(now);
+    syncChromeColors(col);
 
     if (phase === 'idle') {
       if (col.disco) {
@@ -865,8 +991,8 @@
 
       for (var hi = hunters.length - 1; hi >= 0; hi--) {
         var h = hunters[hi];
-        var dx = ship.x - h.x, dy = ship.y - h.y;
-        var want = Math.atan2(dy, dx);
+        var td = toroidalDelta(h.x, h.y, ship.x, ship.y);
+        var want = Math.atan2(td.dy, td.dx);
         var turn = D().huntTurnRate * swarm * f;
         var da = want - h.ang;
         while (da > Math.PI) da -= Math.PI * 2;
@@ -878,7 +1004,7 @@
         h.x += h.vx * f;
         h.y += h.vy * f;
         wrap(h);
-        if (dist(h, ship) < h.r + 10 && ship.inv <= 0) {
+        if (distToroidal(h, ship) < h.r + 10 && ship.inv <= 0) {
           hitShip();
         }
       }
@@ -889,7 +1015,7 @@
         rk.y += rk.vy * f;
         rk.rot += rk.vr * f;
         wrap(rk);
-        if (dist(rk, ship) < rk.r + 8 && ship.inv <= 0) {
+        if (distToroidal(rk, ship) < rk.r + 8 && ship.inv <= 0) {
           hitShip();
         }
       }
@@ -898,15 +1024,16 @@
         var b = bullets[bi];
         b.x += b.vx * f;
         b.y += b.vy * f;
+        wrap(b);
         b.life -= f;
-        if (b.life <= 0 || b.x < -20 || b.x > W + 20 || b.y < -20 || b.y > H + 20) {
+        if (b.life <= 0) {
           bullets.splice(bi, 1);
           continue;
         }
         var hit = false;
         for (var rj = rocks.length - 1; rj >= 0; rj--) {
           var R = rocks[rj];
-          if (dist(b, R) < R.r + 4) {
+          if (distToroidal(b, R) < R.r + 4) {
             splitRock(R, col);
             hit = true;
             break;
@@ -915,7 +1042,7 @@
         if (!hit) {
           for (var hj = hunters.length - 1; hj >= 0; hj--) {
             var Hn = hunters[hj];
-            if (dist(b, Hn) < Hn.r + 4) {
+            if (distToroidal(b, Hn) < Hn.r + 4) {
               score += 200;
               explode(Hn.x, Hn.y, col.ship, 12);
               hunters.splice(hj, 1);
