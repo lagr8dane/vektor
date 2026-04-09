@@ -552,7 +552,7 @@
     var n = Math.max(128, Math.floor(sr * (Math.max(d, 0.02) + tail)));
     var buf = a.createBuffer(1, n, sr);
     var ch = buf.getChannelData(0);
-    var phase = 0;
+    var oscPhase = 0;
     var dPhase = (2 * Math.PI * f) / sr;
     var volBoost = isTouch || iosLikeAudio ? 1.45 : 1;
     var amp = Math.min(0.95, Math.max(v, 0.0001) * volBoost);
@@ -563,16 +563,16 @@
       var env = atk * dec;
       var w;
       if (waveType === 'square') {
-        w = Math.sin(phase) >= 0 ? 0.75 : -0.75;
+        w = Math.sin(oscPhase) >= 0 ? 0.75 : -0.75;
       } else if (waveType === 'sawtooth') {
-        var cyc = (phase / (2 * Math.PI)) % 1;
+        var cyc = (oscPhase / (2 * Math.PI)) % 1;
         w = 2 * cyc - 1;
       } else {
-        w = Math.sin(phase);
+        w = Math.sin(oscPhase);
       }
       ch[i] = w * amp * env;
-      phase += dPhase;
-      if (phase > Math.PI * 2000) phase -= Math.PI * 2000;
+      oscPhase += dPhase;
+      if (oscPhase > Math.PI * 2000) oscPhase -= Math.PI * 2000;
     }
     return buf;
   }
@@ -665,6 +665,7 @@
   var touchIds = { rotL: null, rotR: null, thrust: null };
   var shipBreakup = 0;
   var INV_RESPAWN_FRAMES = 60;
+  var waveClearBusy = false;
 
   function loadHS() {
     try {
@@ -788,13 +789,19 @@
   }
 
   function waveCleared() {
-    var bonus = wave === 1 ? 500 : wave === 2 ? 750 : wave * 300;
-    score += bonus;
-    bonusFlash = { amt: bonus, t: 60 };
-    beep(523, 'square', 0.1, 0.15);
-    wave++;
-    startWave();
-    saveHS();
+    if (waveClearBusy) return;
+    waveClearBusy = true;
+    try {
+      var bonus = wave === 1 ? 500 : wave === 2 ? 750 : wave * 300;
+      score += bonus;
+      bonusFlash = { amt: bonus, t: 60 };
+      beep(523, 'square', 0.1, 0.15);
+      wave++;
+      startWave();
+      saveHS();
+    } finally {
+      waveClearBusy = false;
+    }
   }
 
   function hyper() {
@@ -930,6 +937,7 @@
 
   function drawIdle(now) {
     var col = resolve(now);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = col.bg;
     ctx.fillRect(0, 0, W, H);
     ctx.fillStyle = col.text;
@@ -1066,6 +1074,7 @@
 
     ctx.fillStyle = col.bg;
     ctx.fillRect(0, 0, W, H);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
 
     if (phase === 'gameover') {
       ctx.fillStyle = col.text;
@@ -1082,12 +1091,15 @@
 
     if (!paused) {
       if (shipBreakup > 0) {
+        ship.x = W / 2;
+        ship.y = H / 2;
+        ship.vx = ship.vy = 0;
+        ship.ang = -Math.PI / 2;
         shipBreakup -= f;
         if (shipBreakup <= 0) {
           shipBreakup = 0;
           ship.inv = INV_RESPAWN_FRAMES;
         }
-        ship.vx = ship.vy = 0;
       } else {
         var rotSp = 0.065 * f;
         if (rotL) ship.ang -= rotSp;
@@ -1194,13 +1206,18 @@
       ctx.rotate(h.ang);
       ctx.strokeStyle = col.ship;
       ctx.lineWidth = 2;
+      ctx.setLineDash([4, 3]);
       ctx.beginPath();
-      ctx.moveTo(16, 0);
-      ctx.lineTo(-12, 10);
-      ctx.lineTo(-8, 0);
-      ctx.lineTo(-12, -10);
+      ctx.moveTo(12, 0);
+      ctx.lineTo(0, 9);
+      ctx.lineTo(-12, 0);
+      ctx.lineTo(0, -9);
       ctx.closePath();
       ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(0, 0, 5, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
       ctx.restore();
     });
 
