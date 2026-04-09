@@ -1274,6 +1274,11 @@
       }
     }
 
+    if (phase === 'play' && !running && !paused && !matchOver) {
+      if (keys.left) player.x = clampPaddle(player.x - PLAYER_SPEED * f);
+      if (keys.right) player.x = clampPaddle(player.x + PLAYER_SPEED * f);
+    }
+
     if (running && !paused && !matchOver && now >= postScoreUntil && ball.vx === 0 && ball.vy === 0) {
       resetBall(nextServeToPlayer);
     }

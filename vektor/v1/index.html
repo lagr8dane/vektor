@@ -705,6 +705,11 @@
     ctx.stroke();
     ctx.setLineDash([]);
 
+    if (phase === 'play' && now < postScoreUntil && ball.vx === 0 && ball.vy === 0) {
+      if (keys.left) player.x = clampPaddle(player.x - PLAYER_SPEED * f);
+      if (keys.right) player.x = clampPaddle(player.x + PLAYER_SPEED * f);
+    }
+
     if (phase === 'play' && now >= postScoreUntil) {
       if (keys.left) player.x = clampPaddle(player.x - PLAYER_SPEED * f);
       if (keys.right) player.x = clampPaddle(player.x + PLAYER_SPEED * f);
