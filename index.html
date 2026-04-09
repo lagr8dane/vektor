@@ -5,152 +5,141 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="description" content="Shall we play a game? AtorGames — arcade and learning games.">
   <title>AtorGames</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
       width: 100%;
       min-height: 100%;
       min-height: 100dvh;
-      background: #000000;
-      color: #fff;
-      overflow-x: hidden;
+      background: #000;
+      color: #3f6;
     }
     body {
       display: flex;
-      flex-direction: column;
       align-items: center;
       justify-content: center;
-      font-family: Georgia, "Times New Roman", serif;
+      padding: 16px;
+      font-family: "Share Tech Mono", ui-monospace, monospace;
     }
-    #logo-canvas-wrap {
-      position: fixed;
-      inset: 0;
+    #terminal-wrap {
+      width: 100%;
+      max-width: 640px;
+      opacity: 0;
+      transition: opacity 650ms ease;
+    }
+    #terminal-wrap.visible { opacity: 1; }
+    .term-chrome {
+      background: linear-gradient(180deg, #2a2a2a 0%, #1a1a1a 100%);
+      border: 1px solid #444;
+      border-radius: 6px 6px 0 0;
+      padding: 8px 12px;
       display: flex;
       align-items: center;
-      justify-content: center;
+      gap: 10px;
+      box-shadow: 0 1px 0 rgba(255,255,255,0.06) inset;
+    }
+    .term-dots {
+      display: flex;
+      gap: 6px;
+    }
+    .term-dots span {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #555;
+    }
+    .term-dots span:nth-child(1) { background: #c44; }
+    .term-dots span:nth-child(2) { background: #ca4; }
+    .term-dots span:nth-child(3) { background: #6c4; }
+    .term-title {
+      flex: 1;
+      text-align: center;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      color: #888;
+      text-transform: uppercase;
+    }
+    .term-screen-outer {
+      border: 1px solid #333;
+      border-top: none;
+      border-radius: 0 0 6px 6px;
+      background: #0a0c0a;
+      box-shadow:
+        0 0 0 1px #000,
+        0 12px 40px rgba(0,0,0,0.65),
+        inset 0 0 80px rgba(0,40,20,0.15);
+    }
+    .term-screen {
+      position: relative;
+      min-height: min(52vh, 420px);
+      padding: 20px 18px 24px;
+      font-size: 14px;
+      line-height: 1.55;
+      color: #33ff66;
+      text-shadow: 0 0 6px rgba(51, 255, 102, 0.35);
+      overflow: hidden;
+    }
+    @media (max-width: 480px) {
+      .term-screen { font-size: 12px; min-height: 48vh; padding: 14px 12px 18px; }
+    }
+    .term-scanlines {
       pointer-events: none;
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        to bottom,
+        transparent,
+        transparent 2px,
+        rgba(0, 0, 0, 0.13) 2px,
+        rgba(0, 0, 0, 0.13) 3px
+      );
       z-index: 2;
     }
-    #logo-canvas {
-      width: min(320px, 90vw);
-      height: auto;
-      aspect-ratio: 4 / 3;
-      max-height: 45vh;
-    }
-    #dom-stage {
-      position: relative;
-      z-index: 3;
-      width: 100%;
-      max-width: 520px;
-      padding: 24px 20px 48px;
-      text-align: center;
-      opacity: 0;
+    .term-vignette {
       pointer-events: none;
-      transition: opacity 400ms ease;
+      position: absolute;
+      inset: 0;
+      box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.5);
+      z-index: 1;
     }
-    #dom-stage.visible {
-      opacity: 1;
-      pointer-events: auto;
-    }
-    #dom-stage.faded { opacity: 0; pointer-events: none; }
-    .logo-stack {
-      text-align: center;
-      margin-bottom: 28px;
+    #term-out {
       position: relative;
-      min-height: 120px;
+      z-index: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
     }
-    .logo-line1 {
-      font-family: Georgia, "Times New Roman", serif;
-      font-size: 42px;
-      color: #fff;
-      line-height: 1.05;
-      letter-spacing: 0.02em;
-      transform: translateY(10px);
-      transition: transform 1.5s cubic-bezier(0.22, 1, 0.36, 1);
-    }
-    .logo-stack.spread .logo-line1 {
-      transform: translateY(-8px);
-    }
-    .logo-line2 {
-      font-family: Georgia, "Times New Roman", serif;
-      font-size: 42px;
-      color: #fff;
-      line-height: 1.05;
-      margin-top: 2px;
-      margin-left: 0;
-      letter-spacing: 0.02em;
-      transform: translateY(-36px);
-      transition: transform 1.5s cubic-bezier(0.22, 1, 0.36, 1), margin-left 1.5s cubic-bezier(0.22, 1, 0.36, 1);
-    }
-    .logo-stack.spread .logo-line2 {
-      transform: translateY(4px);
-      margin-left: 0.35em;
-    }
-    .logo-com {
-      font-family: Arial, sans-serif;
-      font-size: 14px;
-      color: rgba(255, 255, 255, 0.4);
-      letter-spacing: 0.15em;
-      text-align: right;
-      max-width: 280px;
-      margin: 6px auto 0;
-      padding-right: 4px;
-    }
-    @media (max-width: 480px) {
-      .logo-line1, .logo-line2 { font-size: 34px; }
-      .logo-com { font-size: 13px; }
-    }
-    .letter {
-      display: inline-block;
-      opacity: 0;
-      transform: translateX(-6px);
-    }
-    .letter.show {
-      opacity: 1;
-      transform: translateX(0);
-      transition: opacity 280ms ease, transform 380ms cubic-bezier(0.22, 1, 0.36, 1);
-    }
-    .morph-spacer {
-      display: inline-block;
-      width: 0;
-      transition: width 1.5s cubic-bezier(0.22, 1, 0.36, 1);
-    }
-    .morph-spacer.open { width: 0.15em; }
-    #question-block {
-      margin-top: 8px;
-      min-height: 4.5em;
-    }
-    #typed-text {
-      font-family: Georgia, "Times New Roman", serif;
-      font-size: 18px;
-      letter-spacing: 0.06em;
-      color: #fff;
-      line-height: 1.5;
-    }
-    @media (max-width: 480px) {
-      #typed-text { font-size: 16px; }
+    .term-line { margin-bottom: 0.35em; }
+    .term-dim { color: #1a6; text-shadow: none; }
+    .term-prompt { color: #2d8; }
+    #question-line {
+      margin-top: 1em;
+      min-height: 1.6em;
+      font-size: clamp(14px, 3.8vw, 17px);
+      letter-spacing: 0.04em;
     }
     #type-cursor {
       display: inline-block;
-      width: 2px;
+      width: 0.55em;
       height: 1.1em;
-      background: #fff;
+      background: #33ff66;
       margin-left: 2px;
       vertical-align: text-bottom;
-      animation: blink 0.85s step-end infinite;
+      animation: curBlink 0.9s step-end infinite;
+      box-shadow: 0 0 8px #33ff66;
     }
-    #type-cursor.hidden { display: none; }
-    @keyframes blink {
-      50% { opacity: 0; }
-    }
+    #type-cursor.off { display: none; }
+    @keyframes curBlink { 50% { opacity: 0; } }
     #wargames-attrib {
       font-family: Arial, sans-serif;
       font-size: 10px;
       font-style: italic;
-      color: rgba(255, 255, 255, 0.2);
-      margin-top: 10px;
+      color: rgba(51, 255, 102, 0.22);
+      margin-top: 12px;
       opacity: 0;
-      transition: opacity 600ms ease;
+      transition: opacity 500ms ease;
     }
     #wargames-attrib.visible { opacity: 1; }
     #cta-row {
@@ -165,10 +154,11 @@
       opacity: 1;
       transition: opacity 400ms ease;
     }
+    #cta-row.visible .cta-btn:nth-child(1) { transition: opacity 400ms ease; opacity: 1; }
+    #cta-row.visible .cta-btn:nth-child(2) { transition: opacity 400ms ease 200ms; opacity: 1; }
     @media (max-width: 480px) {
       #cta-row {
         flex-direction: column;
-        align-items: stretch;
         gap: 12px;
         max-width: 280px;
         margin-left: auto;
@@ -176,34 +166,27 @@
       }
     }
     .cta-btn {
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      background: rgba(255, 255, 255, 0.06);
-      color: rgba(255, 255, 255, 0.85);
-      padding: 14px 32px;
-      font-family: Arial, sans-serif;
-      font-size: 11px;
-      letter-spacing: 0.14em;
+      border: 1px solid rgba(51, 255, 102, 0.35);
+      background: rgba(51, 255, 102, 0.06);
+      color: rgba(51, 255, 102, 0.88);
+      padding: 14px 28px;
+      font-family: "Share Tech Mono", ui-monospace, monospace;
+      font-size: 10px;
+      letter-spacing: 0.1em;
       text-transform: uppercase;
-      border-radius: 3px;
+      border-radius: 2px;
       cursor: pointer;
-      transition: background 180ms ease, border-color 180ms ease, transform 180ms ease;
+      opacity: 0;
+      text-shadow: 0 0 4px rgba(51, 255, 102, 0.3);
+      transition: background 180ms ease, border-color 180ms ease, transform 180ms ease, color 180ms ease;
     }
     @media (hover: hover) and (pointer: fine) {
       .cta-btn:hover {
-        background: rgba(255, 255, 255, 0.14);
-        border-color: rgba(255, 255, 255, 0.55);
+        background: rgba(51, 255, 102, 0.12);
+        border-color: rgba(51, 255, 102, 0.55);
         transform: translateY(-1px);
+        color: #8f8;
       }
-    }
-    .cta-btn:active { transform: translateY(0); }
-    .cta-btn { opacity: 0; }
-    #cta-row.visible .cta-btn:first-child {
-      opacity: 1;
-      transition: opacity 400ms ease;
-    }
-    #cta-row.visible .cta-btn:last-child {
-      opacity: 1;
-      transition: opacity 400ms ease 200ms;
     }
     #transition-overlay {
       position: fixed;
@@ -253,27 +236,24 @@
   </style>
 </head>
 <body>
-  <div id="logo-canvas-wrap">
-    <canvas id="logo-canvas" width="640" height="480" aria-hidden="true"></canvas>
-  </div>
-
-  <div id="dom-stage">
-    <div class="logo-stack" id="logo-stack" aria-hidden="true">
-      <div class="logo-line1" id="line-ator">
-        <span class="letter" data-i="0">A</span><span class="letter" data-i="1">t</span><span class="letter" data-i="2">o</span><span class="letter" data-i="3">r</span>
-      </div>
-      <div class="logo-line2" id="line-games">
-        <span class="letter" data-i="4">G</span><span class="letter" data-i="5">a</span><span class="letter" data-i="6">m</span><span class="letter" data-i="7">e</span><span class="letter" data-i="8">s</span>
-      </div>
-      <div class="logo-com" id="logo-com-line" style="opacity:0;transition:opacity 500ms ease">.com</div>
+  <div id="terminal-wrap">
+    <div class="term-chrome">
+      <div class="term-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+      <div class="term-title">WOPR — ATORGAMES UPLINK</div>
+      <div style="width:46px"></div>
     </div>
-    <div id="question-block">
-      <div id="typed-text" aria-live="polite"></div><span id="type-cursor" class="hidden"></span>
-    </div>
-    <p id="wargames-attrib">— WarGames, 1983</p>
-    <div id="cta-row">
-      <button type="button" class="cta-btn" id="btn-arcade">I'm here for arcade</button>
-      <button type="button" class="cta-btn" id="btn-gunner">I'm here for Gunner!</button>
+    <div class="term-screen-outer">
+      <div class="term-screen">
+        <div class="term-vignette"></div>
+        <div class="term-scanlines"></div>
+        <div id="term-out"></div>
+        <div id="question-line" aria-live="polite"><span id="typed-q"></span><span id="type-cursor" class="off"></span></div>
+        <p id="wargames-attrib">— WarGames, 1983</p>
+        <div id="cta-row">
+          <button type="button" class="cta-btn" id="btn-arcade">I'm here for arcade</button>
+          <button type="button" class="cta-btn" id="btn-gunner">I'm here for Gunner!</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -282,14 +262,9 @@
 
   <script>
 (function () {
-  var canvas = document.getElementById('logo-canvas');
-  var ctx = canvas.getContext('2d');
-  var wrap = document.getElementById('logo-canvas-wrap');
-  var domStage = document.getElementById('dom-stage');
-  var lineAtor = document.querySelectorAll('#line-ator .letter');
-  var lineGames = document.querySelectorAll('#line-games .letter');
-  var logoCom = document.getElementById('logo-com-line');
-  var typedEl = document.getElementById('typed-text');
+  var wrap = document.getElementById('terminal-wrap');
+  var out = document.getElementById('term-out');
+  var typedQ = document.getElementById('typed-q');
   var cursorEl = document.getElementById('type-cursor');
   var attribEl = document.getElementById('wargames-attrib');
   var ctaRow = document.getElementById('cta-row');
@@ -304,121 +279,99 @@
       if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
       if (actx.state === 'suspended') void actx.resume();
       var sr = actx.sampleRate;
-      var n = Math.max(64, Math.floor(sr * 0.02));
+      var n = Math.max(48, Math.floor(sr * 0.015));
       var buf = actx.createBuffer(1, n, sr);
       var d = buf.getChannelData(0);
       for (var i = 0; i < n; i++) {
-        d[i] = Math.sin(2 * Math.PI * 2000 * i / sr) * 0.04 * (1 - i / n);
+        d[i] = Math.sin(2 * Math.PI * 2000 * i / sr) * 0.035 * (1 - i / n);
       }
       var src = actx.createBufferSource();
       src.buffer = buf;
       var g = actx.createGain();
-      g.gain.value = 0.6;
+      g.gain.value = 0.45;
       src.connect(g);
       g.connect(actx.destination);
       src.start();
     } catch (e) {}
   }
 
-  function drawAGMono(alpha) {
-    var w = canvas.width;
-    var h = canvas.height;
-    ctx.clearRect(0, 0, w, h);
-    ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
-    ctx.fillStyle = '#ffffff';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.font = 'bold 160px Georgia, "Times New Roman", serif';
-    var cx = w / 2;
-    var cy = h / 2;
-    var letterW = ctx.measureText('A').width;
-    var gap = -letterW * 0.08;
-    var total = letterW * 2 + gap;
-    ctx.fillText('A', cx - total / 2 + letterW / 2, cy);
-    ctx.fillText('G', cx - total / 2 + letterW + gap + letterW / 2, cy);
-    ctx.globalAlpha = 1;
-  }
-
-  function runAct1(done) {
-    var t0 = performance.now();
-    function frame(now) {
-      var t = now - t0;
-      var a = Math.min(1, t / 600);
-      drawAGMono(a);
-      if (t < 600) requestAnimationFrame(frame);
-      else {
-        drawAGMono(1);
-        done();
-      }
+  function typeInto(el, text, msPerChar, done, withSound) {
+    var i = 0;
+    function step() {
+      if (i < text.length) {
+        el.textContent += text.charAt(i);
+        i++;
+        if (withSound) tickSound();
+        setTimeout(step, msPerChar);
+      } else if (done) done();
     }
-    drawAGMono(0);
-    requestAnimationFrame(frame);
+    el.textContent = '';
+    step();
   }
 
-  function runAct2(done) {
-    wrap.style.transition = 'opacity 400ms ease';
-    wrap.style.opacity = '0';
-    setTimeout(function () {
-      wrap.style.display = 'none';
-      domStage.classList.add('visible');
-      var logoStack = document.getElementById('logo-stack');
-      var letters = [].slice.call(document.querySelectorAll('#logo-stack .letter'));
-      var dur = 1500;
-      var order = [0, 1, 2, 3, 4, 5, 6, 7, 8];
-      requestAnimationFrame(function () {
-        requestAnimationFrame(function () {
-          logoStack.classList.add('spread');
-        });
-      });
-      order.forEach(function (idx, j) {
-        setTimeout(function () {
-          letters[idx].classList.add('show');
-        }, (j / order.length) * (dur * 0.88));
-      });
-      setTimeout(function () {
-        logoCom.style.opacity = '1';
-      }, dur - 400);
-      setTimeout(done, dur + 80);
-    }, 420);
+  function addLine(html, className) {
+    var div = document.createElement('div');
+    div.className = 'term-line' + (className ? ' ' + className : '');
+    div.innerHTML = html;
+    out.appendChild(div);
   }
 
-  function runAct3(done) {
+  var bootLines = [
+    { text: '*** UPLINK ESTABLISHED ***', ms: 22, dim: true, sound: false },
+    { text: 'WOPR_SUBSYSTEM ................ ONLINE', ms: 12, dim: true, sound: false },
+    { text: 'SESSION ....................... GUEST', ms: 12, dim: true, sound: false },
+    { text: 'MEM: 64K  BUFFER OK  CHECKSUM OK', ms: 10, dim: true, sound: false },
+    { text: '', ms: 0, dim: true, sound: false },
+    { text: '> HELLO.', ms: 35, dim: false, sound: true }
+  ];
+
+  function runBoot(i, done) {
+    if (i >= bootLines.length) {
+      done();
+      return;
+    }
+    var row = bootLines[i];
+    if (!row.text) {
+      addLine('&nbsp;', 'term-dim');
+      runBoot(i + 1, done);
+      return;
+    }
+    var div = document.createElement('div');
+    div.className = 'term-line' + (row.dim ? ' term-dim' : ' term-prompt');
+    out.appendChild(div);
+    typeInto(div, row.text, row.ms, function () {
+      runBoot(i + 1, done);
+    }, row.sound);
+  }
+
+  function runQuestion(done) {
+    cursorEl.classList.remove('off');
     var phrase = 'Shall we play a game?';
     attribEl.classList.add('visible');
-    cursorEl.classList.remove('hidden');
-    cursorEl.style.visibility = 'visible';
-    cursorEl.style.animation = 'none';
-    setTimeout(function () {
-      cursorEl.style.visibility = 'hidden';
-      setTimeout(function () {
-        cursorEl.style.visibility = 'visible';
-        cursorEl.style.animation = 'blink 0.85s step-end infinite';
-        var i = 0;
-        function typeChar() {
-          if (i < phrase.length) {
-            typedEl.textContent += phrase.charAt(i);
-            i++;
-            tickSound();
-            setTimeout(typeChar, 40);
+    var j = 0;
+    function qStep() {
+      if (j < phrase.length) {
+        typedQ.textContent += phrase.charAt(j);
+        j++;
+        tickSound();
+        setTimeout(qStep, 42);
+      } else {
+        var blinks = 0;
+        function blinkC() {
+          blinks++;
+          if (blinks <= 6) {
+            cursorEl.style.visibility = blinks % 2 ? 'visible' : 'hidden';
+            setTimeout(blinkC, 380);
           } else {
-            var blinks = 0;
-            function blinkC() {
-              blinks++;
-              if (blinks <= 6) {
-                cursorEl.style.visibility = blinks % 2 ? 'visible' : 'hidden';
-                setTimeout(blinkC, 400);
-              } else {
-                cursorEl.classList.add('hidden');
-                ctaRow.classList.add('visible');
-                done();
-              }
-            }
-            setTimeout(blinkC, 300);
+            cursorEl.classList.add('off');
+            ctaRow.classList.add('visible');
+            done();
           }
         }
-        typeChar();
-      }, 120);
-    }, 420);
+        setTimeout(blinkC, 280);
+      }
+    }
+    setTimeout(qStep, 400);
   }
 
   function loadPressStart(cb) {
@@ -433,11 +386,12 @@
     l.onload = function () { cb(); };
     l.onerror = function () { cb(); };
     document.head.appendChild(l);
-    setTimeout(cb, 280);
+    setTimeout(cb, 300);
   }
 
   function goArcade() {
-    domStage.classList.add('faded');
+    document.getElementById('terminal-wrap').style.opacity = '0';
+    document.getElementById('terminal-wrap').style.transition = 'opacity 400ms ease';
     overlay.className = 'flash-vektor';
     transMsg.innerHTML = '<div class="msg-vektor">V E K T O R</div>';
     transMsg.classList.add('visible');
@@ -448,7 +402,8 @@
 
   function goGunner() {
     loadPressStart(function () {
-      domStage.classList.add('faded');
+      document.getElementById('terminal-wrap').style.opacity = '0';
+      document.getElementById('terminal-wrap').style.transition = 'opacity 400ms ease';
       overlay.className = 'flash-gunner';
       transMsg.innerHTML = '<div class="msg-gunner">PROFESSOR GUNNER\'S<br>SCHOOLHOUSE</div>';
       transMsg.classList.add('visible');
@@ -462,18 +417,23 @@
   btnGunner.addEventListener('click', goGunner);
 
   document.addEventListener('touchstart', function () {
-    if (!actx) try { actx = new (window.AudioContext || window.webkitAudioContext)(); void actx.resume(); } catch (e) {}
+    try {
+      if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+      void actx.resume();
+    } catch (e) {}
   }, { once: true, passive: true });
 
-  runAct1(function () {
-    setTimeout(function () {
-      runAct2(function () {
-        setTimeout(function () {
-          runAct3(function () {});
-        }, 400);
-      });
-    }, 900);
+  requestAnimationFrame(function () {
+    wrap.classList.add('visible');
   });
+
+  setTimeout(function () {
+    runBoot(0, function () {
+      setTimeout(function () {
+        runQuestion(function () {});
+      }, 500);
+    });
+  }, 520);
 })();
   </script>
 </body>
