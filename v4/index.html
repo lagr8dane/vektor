@@ -16,6 +16,7 @@
       position: relative;
       transition: background 0.2s ease;
     }
+    body.touch-ui { padding-top: 36px; padding-bottom: env(safe-area-inset-bottom, 0px); }
     .hub-back {
       position: absolute;
       top: 20px;
@@ -52,7 +53,17 @@
       background: rgba(0,0,0,0.35);
       cursor: pointer;
     }
-    .wrap-main { width: min(800px, 100vw); max-width: 800px; }
+    .wrap-main {
+      width: min(100vw, 1024px);
+      max-width: 1024px;
+    }
+    body.touch-ui .wrap-main {
+      width: min(
+        100vw,
+        max(260px, calc((100vh - env(safe-area-inset-bottom, 0px) - 200px) * 800 / 600)),
+        1024px
+      );
+    }
     .canvas-wrap {
       position: relative;
       width: 100%;
@@ -66,7 +77,7 @@
     }
     canvas {
       display: block;
-      width: min(800px, 100vw);
+      width: 100%;
       height: auto;
       aspect-ratio: 800 / 600;
       position: relative;
@@ -133,39 +144,46 @@
       background: rgba(0,0,0,0.6);
     }
     .touch-bar.show { display: flex; }
-    .touch-split { display: flex; width: 100%; height: 100%; }
-    .touch-rot { flex: 1; display: flex; border-right: 1px solid #2a2318; }
-    .touch-rot button {
-      flex: 1;
-      min-height: 100px;
+    .touch-split {
+      display: flex;
+      flex-direction: row;
+      width: 100%;
+      height: 100%;
+      align-items: stretch;
+    }
+    .touch-rot-side {
+      flex: 0 0 13%;
+      max-width: 76px;
+      min-width: 44px;
       background: rgba(200,169,110,0.06);
       border: none;
       border-right: 1px solid #2a2318;
       color: #c8a96e;
-      font-size: 10px;
-      letter-spacing: 0.12em;
+      font-size: 8px;
+      letter-spacing: 0.08em;
       text-transform: uppercase;
       font-family: system-ui, sans-serif;
+      padding: 4px 2px;
+      line-height: 1.15;
     }
-    .touch-rot button:active, .touch-actions button:active { background: rgba(200,169,110,0.18); }
-    .touch-actions {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
+    .touch-rot-side:last-of-type {
+      border-right: none;
+      border-left: 1px solid #2a2318;
     }
-    .touch-actions button {
+    .touch-rot-side:active, .touch-act:active { background: rgba(200,169,110,0.18); }
+    .touch-act {
+      flex: 1 1 0;
+      min-width: 0;
       border: none;
-      border-bottom: 1px solid #2a2318;
+      border-right: 1px solid #2a2318;
       background: rgba(200,169,110,0.06);
       color: #c8a96e;
       font-size: 10px;
-      letter-spacing: 0.12em;
+      letter-spacing: 0.1em;
       text-transform: uppercase;
       font-family: system-ui, sans-serif;
     }
-    .touch-actions .t-thrust { flex: 0 0 40px; }
-    .touch-actions .t-fire { flex: 0 0 35px; }
-    .touch-actions .t-hyper { flex: 1; min-height: 25px; border-bottom: none; }
+    .touch-act:last-child { border-right: none; }
   </style>
 </head>
 <body>
@@ -187,15 +205,11 @@
     </div>
     <div class="touch-bar" id="touchBar">
       <div class="touch-split">
-        <div class="touch-rot">
-          <button type="button" id="tRotL">◀ ROT L</button>
-          <button type="button" id="tRotR">ROT R ▶</button>
-        </div>
-        <div class="touch-actions">
-          <button type="button" class="t-thrust" id="tThrust">Thrust</button>
-          <button type="button" class="t-fire" id="tFire">Fire</button>
-          <button type="button" class="t-hyper" id="tHyper">Hyper</button>
-        </div>
+        <button type="button" class="touch-rot-side" id="tRotL">◀ ROT<br>L</button>
+        <button type="button" class="touch-act" id="tThrust">Thrust</button>
+        <button type="button" class="touch-act" id="tFire">Fire</button>
+        <button type="button" class="touch-act" id="tHyper">Hyper</button>
+        <button type="button" class="touch-rot-side" id="tRotR">ROT<br>R ▶</button>
       </div>
     </div>
   </div>
@@ -274,6 +288,7 @@
   const isTouch = 'ontouchstart' in window || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
   const isNarrow = window.matchMedia && window.matchMedia('(max-width: 480px)').matches;
   if (isTouch) {
+    document.body.classList.add('touch-ui');
     touchBar.classList.add('show');
     btnPause.classList.add('show');
     canvas.classList.add('can-tap');
@@ -327,35 +342,73 @@
     st.setAttribute('aria-pressed', soundOn ? 'true' : 'false');
   }
   syncS();
-  st.addEventListener('click', function () {
-    soundOn = !soundOn;
-    localStorage.setItem('vektor-v4-sound', soundOn ? '1' : '0');
-    syncS();
-  });
 
   var actx = null;
+  var iosLikeAudio =
+    /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  var safariAudio =
+    iosLikeAudio ||
+    (/Safari/i.test(navigator.userAgent) &&
+      !/Chrome|CriOS|Chromium|Edg|OPR|Android|FxiOS/i.test(navigator.userAgent));
   function getA() {
     if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
     return actx;
   }
-  function unlock() {
-    if (!soundOn) return;
+  function playSilentPrime(a) {
     try {
-      var a = getA();
-      if (a.state === 'suspended') void a.resume();
-      var buf = a.createBuffer(1, 1, 22050);
+      var sr = a.sampleRate || 44100;
+      var frames = Math.max(128, Math.floor(sr * 0.02));
+      var buf = a.createBuffer(1, frames, sr);
       var s = a.createBufferSource();
       s.buffer = buf;
       s.connect(a.destination);
       s.start(0);
     } catch (e) {}
   }
-  document.addEventListener('touchstart', unlock, { once: true });
-  document.addEventListener('mousedown', unlock, { once: true });
-  document.addEventListener('keydown', unlock, { once: true });
+  function primeAudioFromGesture() {
+    if (!soundOn) return;
+    try {
+      var a = getA();
+      if (a.state === 'suspended') {
+        a.resume().then(function () { playSilentPrime(a); }).catch(function () { playSilentPrime(a); });
+      } else {
+        playSilentPrime(a);
+      }
+    } catch (e) {}
+  }
+  function unlock() {
+    primeAudioFromGesture();
+  }
+  document.addEventListener('touchstart', function () { primeAudioFromGesture(); }, { capture: true, passive: true });
+  document.addEventListener('touchend', function () { primeAudioFromGesture(); }, { capture: true, passive: true });
+  document.addEventListener('pointerdown', function () { primeAudioFromGesture(); }, { capture: true, passive: true });
+  document.addEventListener('mousedown', function () { primeAudioFromGesture(); }, { capture: true, passive: true });
+  document.addEventListener('keydown', function () { primeAudioFromGesture(); }, { capture: true, passive: true });
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden && soundOn && actx && actx.state === 'suspended') void actx.resume();
+  });
+
+  function mapOscType(t) {
+    if (safariAudio || isTouch) {
+      if (t === 'square' || t === 'sawtooth') return 'triangle';
+    }
+    return t;
+  }
+
+  st.addEventListener('pointerdown', function (e) {
+    if (e.pointerType === 'touch' || e.pointerType === 'pen') primeAudioFromGesture();
+  }, { passive: true });
+  st.addEventListener('click', function () {
+    soundOn = !soundOn;
+    localStorage.setItem('vektor-v4-sound', soundOn ? '1' : '0');
+    syncS();
+    if (soundOn) primeAudioFromGesture();
+  });
 
   function beep(f, t, d, v) {
     if (!soundOn || !actx) return;
+    t = mapOscType(t);
     var run = function () {
       var t0 = actx.currentTime;
       var o = actx.createOscillator();
@@ -693,11 +746,9 @@
     ctx.font = '11px system-ui, sans-serif';
     ctx.letterSpacing = '0.08em';
     if (isTouch) {
-      ctx.fillText('◀  ▶  (LEFT)', 100, iy + 16);
-      ctx.fillText('THRUST    THRUST BTN', 100, iy + 32);
-      ctx.fillText('FIRE      FIRE BTN', 100, iy + 48);
-      ctx.fillText('HYPER     HYPER BTN', 100, iy + 64);
-      ctx.fillText('PAUSE     II (TOP RIGHT)', 100, iy + 80);
+      ctx.fillText('◀ ROT L | THRUST | FIRE | HYPER | ROT R ▶', 100, iy + 16);
+      ctx.fillText('(ONE ROW — HYPER NOT UNDER FIRE)', 100, iy + 32);
+      ctx.fillText('PAUSE     II (TOP RIGHT)', 100, iy + 48);
     } else {
       ctx.fillText('←  →   OR   A  D', 100, iy + 16);
       ctx.fillText('THRUST    ↑   OR   W', 100, iy + 32);
