@@ -8,7 +8,7 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
       min-height: 100%;
-      background: #16130e;
+      background: #0f0d08;
       font-family: Georgia, "Times New Roman", serif;
     }
     body {
@@ -20,33 +20,56 @@
       padding: 56px 12px 24px;
       position: relative;
     }
-    .back {
+    .hub-back {
       position: absolute;
-      top: 16px;
-      left: 16px;
+      top: 20px;
+      left: 24px;
       font-size: 10px;
-      letter-spacing: 0.18em;
-      color: #d4b87e;
+      letter-spacing: 0.12em;
+      color: #3a3025;
       text-transform: uppercase;
       text-decoration: none;
+      font-family: system-ui, sans-serif;
+      transition: color 150ms ease;
+      z-index: 10;
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+    }
+    @media (hover: hover) and (pointer: fine) {
+      .hub-back:hover { color: #c8a96e; }
+    }
+    .sound-toggle {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      color: #c8a96e;
+      text-transform: uppercase;
       font-family: system-ui, sans-serif;
       transition: background 200ms ease, color 200ms ease, border-color 200ms ease;
       z-index: 10;
       min-height: 44px;
-      padding: 0 16px;
+      padding: 0 14px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      border: 1px solid rgba(212, 184, 126, 0.55);
+      border: 1px solid rgba(200, 169, 110, 0.45);
       border-radius: 3px;
-      background: rgba(212, 184, 126, 0.08);
+      background: rgba(200, 169, 110, 0.06);
+      cursor: pointer;
       box-sizing: border-box;
     }
+    .sound-toggle[aria-pressed="false"] {
+      color: #6b5c3e;
+      border-color: rgba(107, 92, 62, 0.45);
+      background: rgba(0, 0, 0, 0.2);
+    }
     @media (hover: hover) and (pointer: fine) {
-      .back:hover {
+      .sound-toggle:hover {
         color: #f0e6c8;
-        background: rgba(212, 184, 126, 0.16);
-        border-color: rgba(240, 230, 200, 0.5);
+        background: rgba(200, 169, 110, 0.12);
       }
     }
     .score-row {
@@ -57,17 +80,18 @@
       margin-bottom: 10px;
       font-family: system-ui, sans-serif;
     }
+    .score-row.hidden { visibility: hidden; }
     .score-side { text-align: center; flex: 1; }
     .score-label {
       font-size: 10px;
       letter-spacing: 0.2em;
-      color: #8f7d56;
+      color: #6b5c3e;
       text-transform: uppercase;
     }
     .score-num {
       font-family: Georgia, serif;
       font-size: 32px;
-      color: #d4b87e;
+      color: #c8a96e;
       line-height: 1.1;
     }
     .canvas-wrap {
@@ -80,107 +104,98 @@
       width: min(600px, 96vw);
       height: auto;
       aspect-ratio: 600 / 400;
-      background: #16130e;
+      background: #0f0d08;
     }
+    canvas.can-tap { cursor: pointer; }
     .status {
       margin-top: 14px;
       font-size: 11px;
       letter-spacing: 0.12em;
-      color: #6d5e42;
+      color: #5a4d35;
       text-transform: uppercase;
       text-align: center;
       font-family: system-ui, sans-serif;
       width: min(600px, 96vw);
+      min-height: 1.2em;
     }
     .hint {
       margin-top: 8px;
       font-size: 10px;
-      color: #524832;
+      color: #3a3025;
       letter-spacing: 0.06em;
+      text-align: center;
+      font-family: system-ui, sans-serif;
+      width: min(600px, 96vw);
+    }
+    .diff-hud {
+      margin-top: 6px;
+      font-size: 9px;
+      letter-spacing: 0.15em;
+      color: #3a3025;
+      text-transform: uppercase;
       text-align: center;
       font-family: system-ui, sans-serif;
       width: min(600px, 96vw);
     }
     .touch-bar {
       display: none;
-      width: min(600px, 96vw);
-      max-width: 600px;
+      width: 100vw;
+      max-width: 100%;
       margin-top: 0;
-      border-top: 1px solid #3a3228;
-      flex-direction: column;
+      border-top: 1px solid #2a2318;
+      height: 100px;
+      min-height: 100px;
     }
     .touch-bar.show { display: flex; }
-    .touch-space {
-      width: 100%;
-      height: 44px;
-      min-height: 44px;
-      background: rgba(212, 184, 126, 0.1);
-      border: none;
-      border-bottom: 1px solid #3a3228;
-      color: #d4b87e;
-      font-size: 11px;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      font-family: system-ui, sans-serif;
-    }
-    .touch-row {
+    .touch-split {
       display: flex;
       width: 100%;
+      height: 100%;
     }
-    .touch-arrow {
+    .touch-rot {
       flex: 1;
-      height: 56px;
-      min-height: 56px;
-      background: rgba(212, 184, 126, 0.1);
-      border: none;
-      color: #d4b87e;
-      font-size: 20px;
-      font-family: system-ui, sans-serif;
+      display: flex;
+      border-right: 1px solid #2a2318;
     }
-    .touch-arrow:first-child { border-right: 1px solid #3a3228; }
-    .sound-toggle {
-      position: absolute;
-      top: 16px;
-      right: 16px;
+    .touch-rot button {
+      flex: 1;
+      height: 100%;
+      min-height: 100px;
+      background: rgba(200, 169, 110, 0.06);
+      border: none;
+      border-right: 1px solid #2a2318;
+      color: #c8a96e;
       font-size: 10px;
       letter-spacing: 0.12em;
-      color: #d4b87e;
       text-transform: uppercase;
       font-family: system-ui, sans-serif;
-      transition: background 200ms ease, color 200ms ease, border-color 200ms ease;
-      z-index: 10;
-      min-height: 44px;
-      padding: 0 14px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      border: 1px solid rgba(212, 184, 126, 0.55);
-      border-radius: 3px;
-      background: rgba(212, 184, 126, 0.08);
-      cursor: pointer;
-      box-sizing: border-box;
     }
-    .sound-toggle[aria-pressed="false"] {
-      color: #6d5e42;
-      border-color: rgba(109, 94, 66, 0.5);
-      background: rgba(0, 0, 0, 0.15);
+    .touch-rot button:last-child { border-right: none; }
+    .touch-rot button:active { background: rgba(200, 169, 110, 0.18); }
+    .touch-pause-wrap {
+      flex: 1;
+      display: flex;
     }
-    @media (hover: hover) and (pointer: fine) {
-      .sound-toggle:hover {
-        color: #f0e6c8;
-        background: rgba(212, 184, 126, 0.16);
-        border-color: rgba(240, 230, 200, 0.5);
-      }
-      .sound-toggle[aria-pressed="false"]:hover {
-        color: #8f7d56;
-      }
+    .touch-pause-wrap button {
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      min-height: 100px;
+      background: rgba(200, 169, 110, 0.06);
+      border: none;
+      color: #c8a96e;
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      font-family: system-ui, sans-serif;
     }
+    .touch-pause-wrap button:active { background: rgba(200, 169, 110, 0.18); }
   </style>
 </head>
 <body>
-  <a class="back" href="/">← Back</a>
+  <a class="hub-back" href="/">← vektor</a>
   <button type="button" class="sound-toggle" id="soundToggle" aria-pressed="true" aria-label="Toggle game sound">Sound on</button>
-  <div class="score-row">
+  <div class="score-row hidden" id="scoreRow">
     <div class="score-side">
       <div class="score-label">You</div>
       <div class="score-num" id="scoreP">0</div>
@@ -193,13 +208,18 @@
   <div class="canvas-wrap">
     <canvas id="c" width="600" height="400"></canvas>
   </div>
-  <p class="status" id="status">Press space to start</p>
+  <p class="status" id="status"></p>
   <p class="hint" id="hintDesk">← → OR A D TO MOVE · SPACE TO PAUSE</p>
+  <p class="diff-hud" id="diffHud">Pilot</p>
   <div class="touch-bar" id="touchBar">
-    <button type="button" class="touch-space" id="touchSpace">Tap to start</button>
-    <div class="touch-row">
-      <button type="button" class="touch-arrow" id="touchL" aria-label="Left">◀</button>
-      <button type="button" class="touch-arrow" id="touchR" aria-label="Right">▶</button>
+    <div class="touch-split">
+      <div class="touch-rot">
+        <button type="button" id="touchL" aria-label="Rotate left">◀ ROT L</button>
+        <button type="button" id="touchR" aria-label="Rotate right">ROT R ▶</button>
+      </div>
+      <div class="touch-pause-wrap">
+        <button type="button" id="touchPause" aria-label="Pause">Pause</button>
+      </div>
     </div>
   </div>
   <script>
@@ -207,11 +227,16 @@
   const W = 600, H = 400;
   const PADDLE_W = 80, PADDLE_H = 10;
   const BALL_R = 7;
-  const SPEED = 4.5;
-  const CPU_SPEED = 3.2;
   const PLAYER_SPEED = 7;
   const TRAIL_LEN = 8;
   const FRAME_MS = 1000 / 60;
+  const DIFF_KEY = 'vektor-difficulty';
+  const DIFFICULTY = {
+    CADET: { cpuSpeed: 2.2, cpuError: 0.35, ballSpeed: 3.8 },
+    PILOT: { cpuSpeed: 3.2, cpuError: 0.18, ballSpeed: 4.5 },
+    ACE: { cpuSpeed: 4.8, cpuError: 0.06, ballSpeed: 5.5 }
+  };
+  const DIFF_NAMES = ['CADET', 'PILOT', 'ACE'];
 
   const canvas = document.getElementById('c');
   const ctx = canvas.getContext('2d');
@@ -219,19 +244,66 @@
   const elC = document.getElementById('scoreC');
   const elStatus = document.getElementById('status');
   const hintDesk = document.getElementById('hintDesk');
+  const diffHud = document.getElementById('diffHud');
+  const scoreRow = document.getElementById('scoreRow');
   const touchBar = document.getElementById('touchBar');
-  const touchSpace = document.getElementById('touchSpace');
+  const touchPause = document.getElementById('touchPause');
   const touchL = document.getElementById('touchL');
   const touchR = document.getElementById('touchR');
 
   const isTouchUI = 'ontouchstart' in window || (window.matchMedia && matchMedia('(pointer: coarse)').matches);
   if (isTouchUI) {
     touchBar.classList.add('show');
-    hintDesk.style.display = 'none';
+    hintDesk.textContent = 'HOLD ◀ ▶ TO MOVE · PAUSE TO PAUSE';
+    canvas.classList.add('can-tap');
   }
 
+  function loadDiff() {
+    var k = localStorage.getItem(DIFF_KEY);
+    if (k === 'CADET' || k === 'PILOT' || k === 'ACE') return k;
+    return 'PILOT';
+  }
+  var diffKey = loadDiff();
+  function diff() { return DIFFICULTY[diffKey]; }
+  function syncDiffHud() {
+    diffHud.textContent = diffKey.charAt(0) + diffKey.slice(1).toLowerCase();
+  }
+  syncDiffHud();
+
+  var ballSpeed = diff().ballSpeed;
+  var CPU_SPEED = diff().cpuSpeed;
+
+  var audioCtx = null;
+  var audioPrimed = false;
+  var audioUnlockedOnce = false;
+  function getAudio() {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    return audioCtx;
+  }
+  function unlockAudioSpec() {
+    if (audioUnlockedOnce || !soundEnabled) return;
+    try {
+      var ac = getAudio();
+      if (ac.state === 'suspended') {
+        ac.resume().then(function () { audioUnlockedOnce = true; });
+      } else {
+        audioUnlockedOnce = true;
+      }
+      var buf = ac.createBuffer(1, 1, 22050);
+      var src = ac.createBufferSource();
+      src.buffer = buf;
+      src.connect(ac.destination);
+      src.start(0);
+    } catch (e) {}
+  }
+  document.addEventListener('touchstart', unlockAudioSpec, { once: true });
+  document.addEventListener('mousedown', unlockAudioSpec, { once: true });
+  document.addEventListener('keydown', unlockAudioSpec, { once: true });
+
   const SOUND_KEY = 'vektor-v1-sound';
-  let soundEnabled = localStorage.getItem(SOUND_KEY) !== '0';
+  var soundEnabled = localStorage.getItem(SOUND_KEY) !== '0';
   const soundToggle = document.getElementById('soundToggle');
   function syncSoundUi() {
     soundToggle.textContent = soundEnabled ? 'Sound on' : 'Sound off';
@@ -257,49 +329,29 @@
     toggleSoundPref();
   });
 
-  let audioCtx = null;
-  let audioPrimed = false;
-  try {
-    if (navigator.audioSession && 'type' in navigator.audioSession) {
-      navigator.audioSession.type = 'playback';
-    }
-  } catch (e) {}
   function ensureAudio() {
     if (!soundEnabled) return;
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if (!audioCtx && AC) audioCtx = new AC();
-    if (!audioCtx) return;
-    if (audioCtx.state === 'suspended') void audioCtx.resume();
+    var ac = getAudio();
+    if (ac.state === 'suspended') void ac.resume();
   }
-  /**
-   * Must run synchronously inside the user gesture stack (tap / pointerdown).
-   * iOS Safari ignores audio until resume + in-graph work happens in that gesture.
-   */
   function unlockAudioFromUserGesture() {
     if (!soundEnabled) return;
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) return;
-    if (!audioCtx) audioCtx = new AC();
+    var ac = getAudio();
     try {
-      if (audioCtx.state === 'suspended') void audioCtx.resume();
-      var buf = audioCtx.createBuffer(1, 1, audioCtx.sampleRate);
-      var src = audioCtx.createBufferSource();
+      if (ac.state === 'suspended') void ac.resume();
+      var buf = ac.createBuffer(1, 1, ac.sampleRate);
+      var src = ac.createBufferSource();
       src.buffer = buf;
-      src.connect(audioCtx.destination);
+      src.connect(ac.destination);
       src.start(0);
     } catch (e) {}
     audioPrimed = true;
+    audioUnlockedOnce = true;
   }
-  document.addEventListener('touchstart', function () {
-    unlockAudioFromUserGesture();
-  }, { capture: true, passive: true });
-  document.addEventListener('pointerdown', function () {
-    unlockAudioFromUserGesture();
-  }, { capture: true, passive: true });
+  document.addEventListener('touchstart', function () { unlockAudioFromUserGesture(); }, { capture: true, passive: true });
+  document.addEventListener('pointerdown', function () { unlockAudioFromUserGesture(); }, { capture: true, passive: true });
   document.addEventListener('visibilitychange', function () {
-    if (!document.hidden && soundEnabled && audioCtx && audioCtx.state === 'suspended') {
-      void audioCtx.resume();
-    }
+    if (!document.hidden && soundEnabled && audioCtx && audioCtx.state === 'suspended') void audioCtx.resume();
   });
 
   function mapOscType(t) {
@@ -308,21 +360,21 @@
     return t;
   }
 
-  function beep({ type, freq, dur, vol }) {
+  function beep(o) {
     if (!soundEnabled || !audioCtx) return;
-    const play = function () {
-      const t0 = audioCtx.currentTime;
-      const osc = audioCtx.createOscillator();
-      const g = audioCtx.createGain();
-      osc.type = mapOscType(type);
-      osc.frequency.setValueAtTime(freq, t0);
+    var play = function () {
+      var t0 = audioCtx.currentTime;
+      var osc = audioCtx.createOscillator();
+      var g = audioCtx.createGain();
+      osc.type = mapOscType(o.type);
+      osc.frequency.setValueAtTime(o.freq, t0);
       g.gain.setValueAtTime(0, t0);
-      g.gain.linearRampToValueAtTime(vol, t0 + 0.005);
-      g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+      g.gain.linearRampToValueAtTime(o.vol, t0 + 0.005);
+      g.gain.exponentialRampToValueAtTime(0.001, t0 + o.dur);
       osc.connect(g);
       g.connect(audioCtx.destination);
       osc.start(t0);
-      osc.stop(t0 + dur + 0.02);
+      osc.stop(t0 + o.dur + 0.02);
     };
     if (audioCtx.state === 'running') play();
     else void audioCtx.resume().then(play);
@@ -334,10 +386,10 @@
   function sndPlayerScore() { beep({ type: 'square', freq: 660, dur: 0.25, vol: 0.18 }); }
   function sndCpuScore() {
     if (!soundEnabled || !audioCtx) return;
-    const play = function () {
-      const t0 = audioCtx.currentTime;
-      const osc = audioCtx.createOscillator();
-      const g = audioCtx.createGain();
+    var play = function () {
+      var t0 = audioCtx.currentTime;
+      var osc = audioCtx.createOscillator();
+      var g = audioCtx.createGain();
       osc.type = mapOscType('sawtooth');
       osc.frequency.setValueAtTime(160, t0);
       g.gain.setValueAtTime(0, t0);
@@ -352,100 +404,154 @@
     else void audioCtx.resume().then(play);
   }
 
-  let scoreP = 0, scoreC = 0;
-  let running = false;
-  let paused = false;
-  let postScoreUntil = 0;
-  let nextServeToPlayer = true;
+  var phase = 'idle';
+  var scoreP = 0, scoreC = 0;
+  var postScoreUntil = 0;
+  var nextServeToPlayer = true;
 
   const player = { x: W / 2 - PADDLE_W / 2, y: H - 24 - PADDLE_H };
   const cpu = { x: W / 2 - PADDLE_W / 2, y: 24 };
   const ball = { x: W / 2, y: H / 2, vx: 0, vy: 0 };
   const trail = [];
-
   const keys = { left: false, right: false };
+
+  var diffHitRects = [];
+
+  function applyDifficultyParams() {
+    ballSpeed = diff().ballSpeed;
+    CPU_SPEED = diff().cpuSpeed;
+  }
 
   function resetBall(serveTowardPlayer) {
     ball.x = W / 2;
     ball.y = H / 2;
-    const angle = (Math.random() - 0.5) * Math.PI * 0.5;
-    const dir = serveTowardPlayer ? 1 : -1;
-    ball.vx = Math.sin(angle) * SPEED * (Math.random() < 0.5 ? -1 : 1);
-    ball.vy = Math.cos(angle) * SPEED * dir;
-    const mag = Math.hypot(ball.vx, ball.vy) || 1;
-    ball.vx = (ball.vx / mag) * SPEED;
-    ball.vy = (ball.vy / mag) * SPEED;
+    var angle = (Math.random() - 0.5) * Math.PI * 0.5;
+    var dir = serveTowardPlayer ? 1 : -1;
+    ball.vx = Math.sin(angle) * ballSpeed * (Math.random() < 0.5 ? -1 : 1);
+    ball.vy = Math.cos(angle) * ballSpeed * dir;
+    var mag = Math.hypot(ball.vx, ball.vy) || 1;
+    ball.vx = (ball.vx / mag) * ballSpeed;
+    ball.vy = (ball.vy / mag) * ballSpeed;
     trail.length = 0;
   }
 
   function setStatus(text) {
     elStatus.textContent = text;
     if (isTouchUI) {
-      if (!running && !paused) touchSpace.textContent = 'Tap to start';
-      else if (paused) touchSpace.textContent = 'Resume';
-      else touchSpace.textContent = 'Pause';
+      if (phase === 'idle') touchPause.textContent = 'Tap to start';
+      else if (phase === 'paused') touchPause.textContent = 'Resume';
+      else touchPause.textContent = 'Pause';
     }
   }
 
-  function launchIfStopped() {
+  function startPlay() {
     ensureAudio();
-    if (!running) {
-      running = true;
-      paused = false;
-      resetBall(Math.random() < 0.5);
+    applyDifficultyParams();
+    phase = 'play';
+    scoreRow.classList.remove('hidden');
+    canvas.classList.remove('can-tap');
+    scoreP = scoreC = 0;
+    elP.textContent = '0';
+    elC.textContent = '0';
+    postScoreUntil = 0;
+    resetBall(Math.random() < 0.5);
+    setStatus('');
+  }
+
+  function togglePause() {
+    unlockAudioFromUserGesture();
+    ensureAudio();
+    if (phase === 'idle') {
+      startPlay();
+      return;
+    }
+    if (phase === 'play') {
+      phase = 'paused';
+      setStatus('Paused');
+      return;
+    }
+    if (phase === 'paused') {
+      phase = 'play';
       setStatus('');
     }
   }
 
-  function togglePause() {
-    ensureAudio();
-    if (!running) {
-      launchIfStopped();
-      return;
-    }
-    paused = !paused;
-    setStatus(paused ? 'Paused' : '');
-  }
-
-  document.addEventListener('keydown', (e) => {
+  document.addEventListener('keydown', function (e) {
     if (e.code === 'ArrowLeft' || e.code === 'KeyA') { keys.left = true; e.preventDefault(); }
     if (e.code === 'ArrowRight' || e.code === 'KeyD') { keys.right = true; e.preventDefault(); }
     if (e.code === 'Space') { e.preventDefault(); togglePause(); }
   });
-  document.addEventListener('keyup', (e) => {
+  document.addEventListener('keyup', function (e) {
     if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = false;
     if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = false;
   });
 
   function bindTouch(btn, onDown, onUp) {
-    const down = (e) => { e.preventDefault(); onDown(); };
-    const up = (e) => { e.preventDefault(); onUp(); };
+    var down = function (e) { e.preventDefault(); onDown(); };
+    var up = function (e) { e.preventDefault(); onUp(); };
     btn.addEventListener('touchstart', down, { passive: false });
     btn.addEventListener('touchend', up);
     btn.addEventListener('touchcancel', up);
-    btn.addEventListener('mousedown', (e) => { e.preventDefault(); onDown(); });
+    btn.addEventListener('mousedown', function (e) { e.preventDefault(); onDown(); });
     btn.addEventListener('mouseup', onUp);
     btn.addEventListener('mouseleave', onUp);
   }
 
-  bindTouch(touchL, () => {
+  bindTouch(touchL, function () {
     keys.left = true;
     unlockAudioFromUserGesture();
     ensureAudio();
-  }, () => { keys.left = false; });
-  bindTouch(touchR, () => {
+  }, function () { keys.left = false; });
+  bindTouch(touchR, function () {
     keys.right = true;
     unlockAudioFromUserGesture();
     ensureAudio();
-  }, () => { keys.right = false; });
-  touchSpace.addEventListener('click', function () {
+  }, function () { keys.right = false; });
+  touchPause.addEventListener('click', function () {
     unlockAudioFromUserGesture();
     togglePause();
   });
-  touchSpace.addEventListener('touchstart', function (e) {
+  touchPause.addEventListener('touchstart', function (e) {
     e.preventDefault();
     unlockAudioFromUserGesture();
     togglePause();
+  }, { passive: false });
+
+  function canvasToLogical(clientX, clientY) {
+    var r = canvas.getBoundingClientRect();
+    var sx = (clientX - r.left) / r.width * W;
+    var sy = (clientY - r.top) / r.height * H;
+    return { x: sx, y: sy };
+  }
+
+  function hitDiff(px, py) {
+    for (var i = 0; i < diffHitRects.length; i++) {
+      var r = diffHitRects[i];
+      if (px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h) return r.key;
+    }
+    return null;
+  }
+
+  function onCanvasPointer(ev) {
+    if (phase !== 'idle') return;
+    var p = canvasToLogical(ev.clientX, ev.clientY);
+    var hit = hitDiff(p.x, p.y);
+    if (hit) {
+      diffKey = hit;
+      localStorage.setItem(DIFF_KEY, diffKey);
+      syncDiffHud();
+      applyDifficultyParams();
+      return;
+    }
+    unlockAudioFromUserGesture();
+    startPlay();
+  }
+  canvas.addEventListener('click', onCanvasPointer);
+  canvas.addEventListener('touchstart', function (e) {
+    if (phase !== 'idle') return;
+    e.preventDefault();
+    var t = e.changedTouches[0];
+    onCanvasPointer({ clientX: t.clientX, clientY: t.clientY });
   }, { passive: false });
 
   function clampPaddle(px) {
@@ -454,7 +560,7 @@
 
   function hitPlayer() {
     if (ball.vy <= 0) return false;
-    const py = player.y;
+    var py = player.y;
     if (ball.y + BALL_R < py) return false;
     if (ball.y + BALL_R > py + PADDLE_H + BALL_R) return false;
     if (ball.x < player.x - BALL_R || ball.x > player.x + PADDLE_W + BALL_R) return false;
@@ -463,7 +569,7 @@
 
   function hitCpu() {
     if (ball.vy >= 0) return false;
-    const cy = cpu.y;
+    var cy = cpu.y;
     if (ball.y - BALL_R > cy + PADDLE_H) return false;
     if (ball.y - BALL_R < cy - BALL_R) return false;
     if (ball.x < cpu.x - BALL_R || ball.x > cpu.x + PADDLE_W + BALL_R) return false;
@@ -471,22 +577,22 @@
   }
 
   function applyPaddleBounce(isPlayer) {
-    const paddle = isPlayer ? player : cpu;
-    const pc = paddle.x + PADDLE_W / 2;
-    let relative = (ball.x - pc) / (PADDLE_W / 2);
+    var paddle = isPlayer ? player : cpu;
+    var pc = paddle.x + PADDLE_W / 2;
+    var relative = (ball.x - pc) / (PADDLE_W / 2);
     relative = Math.max(-1, Math.min(1, relative));
-    const maxAng = Math.PI * 0.35;
-    const angle = relative * maxAng;
+    var maxAng = Math.PI * 0.35;
+    var angle = relative * maxAng;
     if (isPlayer) {
-      ball.vx = Math.sin(angle) * SPEED;
-      ball.vy = -Math.abs(Math.cos(angle) * SPEED);
+      ball.vx = Math.sin(angle) * ballSpeed;
+      ball.vy = -Math.abs(Math.cos(angle) * ballSpeed);
     } else {
-      ball.vx = Math.sin(angle) * SPEED;
-      ball.vy = Math.abs(Math.cos(angle) * SPEED);
+      ball.vx = Math.sin(angle) * ballSpeed;
+      ball.vy = Math.abs(Math.cos(angle) * ballSpeed);
     }
-    const mag = Math.hypot(ball.vx, ball.vy) || 1;
-    ball.vx = (ball.vx / mag) * SPEED;
-    ball.vy = (ball.vy / mag) * SPEED;
+    var mag = Math.hypot(ball.vx, ball.vy) || 1;
+    ball.vx = (ball.vx / mag) * ballSpeed;
+    ball.vy = (ball.vy / mag) * ballSpeed;
     if (isPlayer) {
       ball.y = player.y - BALL_R;
       sndPlayerHit();
@@ -496,16 +602,89 @@
     }
   }
 
-  let lastTick = 0;
+  function drawIdle(now) {
+    ctx.fillStyle = '#0f0d08';
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#c8a96e';
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 36px Georgia, serif';
+    ctx.letterSpacing = '0.25em';
+    ctx.fillText('V E K T O R', W / 2, 70);
+    ctx.letterSpacing = '0';
+    ctx.fillStyle = '#6b5c3e';
+    ctx.font = '11px system-ui, sans-serif';
+    ctx.letterSpacing = '0.15em';
+    ctx.fillText('P O N G', W / 2, 100);
+    ctx.letterSpacing = '0';
+
+    var rowY = 128;
+    var labels = ['CADET', 'PILOT', 'ACE'];
+    diffHitRects = [];
+    var totalW = 0;
+    var sizes = [];
+    ctx.font = '11px system-ui, sans-serif';
+    ctx.letterSpacing = '0.15em';
+    for (var i = 0; i < 3; i++) {
+      sizes.push(ctx.measureText(labels[i]).width);
+      totalW += sizes[i];
+    }
+    totalW += 80;
+    var startX = W / 2 - totalW / 2;
+    var cx = startX;
+    ctx.textAlign = 'center';
+    for (var j = 0; j < 3; j++) {
+      var key = DIFF_NAMES[j];
+      var active = diffKey === key;
+      ctx.fillStyle = active ? '#c8a96e' : '#3a3025';
+      var mid = cx + sizes[j] / 2;
+      ctx.fillText(labels[j], mid, rowY);
+      diffHitRects.push({ key: key, x: cx - 4, y: rowY - 14, w: sizes[j] + 8, h: 22 });
+      cx += sizes[j] + 40;
+    }
+    ctx.textAlign = 'left';
+    ctx.letterSpacing = '0';
+
+    var iy = 175;
+    ctx.fillStyle = '#3a3025';
+    ctx.font = '9px system-ui, sans-serif';
+    ctx.letterSpacing = '0.15em';
+    ctx.fillText('MOVE', W / 2 - 140, iy);
+    ctx.letterSpacing = '0';
+    ctx.fillStyle = '#6b5c3e';
+    ctx.font = '11px system-ui, sans-serif';
+    ctx.letterSpacing = '0.08em';
+    var moveLine = isTouchUI ? '◀  ▶  BUTTONS' : '←  →   OR   A  D';
+    ctx.fillText(moveLine, W / 2 - 140, iy + 16);
+    ctx.fillText('PAUSE    ' + (isTouchUI ? 'PAUSE BUTTON' : 'SPACE'), W / 2 - 140, iy + 34);
+    ctx.letterSpacing = '0';
+
+    var blink = 0.3 + 0.7 * (0.5 + 0.5 * Math.sin(now / 1200 * Math.PI * 2));
+    ctx.globalAlpha = blink;
+    ctx.fillStyle = '#c8a96e';
+    ctx.textAlign = 'center';
+    ctx.font = '11px system-ui, sans-serif';
+    ctx.letterSpacing = '0.12em';
+    ctx.fillText(isTouchUI ? 'TAP CANVAS TO START' : 'PRESS SPACE TO START', W / 2, H - 48);
+    ctx.letterSpacing = '0';
+    ctx.globalAlpha = 1;
+    ctx.textAlign = 'left';
+  }
+
+  var lastTick = 0;
   function tick(now) {
     requestAnimationFrame(tick);
-    const dtMs = lastTick ? Math.min(64, now - lastTick) : FRAME_MS;
+    var dtMs = lastTick ? Math.min(64, now - lastTick) : FRAME_MS;
     lastTick = now;
-    const f = dtMs / FRAME_MS;
+    var f = dtMs / FRAME_MS;
 
-    ctx.fillStyle = '#16130e';
+    if (phase === 'idle') {
+      drawIdle(now);
+      return;
+    }
+
+    ctx.fillStyle = '#0f0d08';
     ctx.fillRect(0, 0, W, H);
-    ctx.strokeStyle = '#2a2418';
+    ctx.strokeStyle = '#1e1a12';
     ctx.setLineDash([6, 8]);
     ctx.beginPath();
     ctx.moveTo(0, H / 2);
@@ -513,12 +692,13 @@
     ctx.stroke();
     ctx.setLineDash([]);
 
-    if (running && !paused && now >= postScoreUntil) {
+    if (phase === 'play' && now >= postScoreUntil) {
       if (keys.left) player.x = clampPaddle(player.x - PLAYER_SPEED * f);
       if (keys.right) player.x = clampPaddle(player.x + PLAYER_SPEED * f);
 
-      const target = ball.x + ball.vx * 8;
-      const cx = cpu.x + PADDLE_W / 2;
+      var errOff = (Math.random() - 0.5) * PADDLE_W * diff().cpuError;
+      var target = ball.x + ball.vx * 8 + errOff;
+      var cx = cpu.x + PADDLE_W / 2;
       if (target < cx - 2) cpu.x = clampPaddle(cpu.x - CPU_SPEED * f);
       else if (target > cx + 2) cpu.x = clampPaddle(cpu.x + CPU_SPEED * f);
 
@@ -563,31 +743,41 @@
       }
     }
 
-    if (running && !paused && now >= postScoreUntil && ball.vx === 0 && ball.vy === 0) {
+    if (phase === 'play' && now >= postScoreUntil && ball.vx === 0 && ball.vy === 0) {
       resetBall(nextServeToPlayer);
     }
 
     trail.unshift({ x: ball.x, y: ball.y });
     if (trail.length > TRAIL_LEN) trail.pop();
-    for (let i = trail.length - 1; i >= 0; i--) {
-      const p = trail[i];
-      const t = i / (TRAIL_LEN - 1 || 1);
-      const alpha = (1 - t) * 0.4;
+    for (var ti = trail.length - 1; ti >= 0; ti--) {
+      var p = trail[ti];
+      var tt = ti / (TRAIL_LEN - 1 || 1);
+      var alpha = (1 - tt) * 0.4;
       ctx.beginPath();
-      ctx.fillStyle = 'rgba(212, 184, 126,' + alpha + ')';
+      ctx.fillStyle = 'rgba(200, 169, 110,' + alpha + ')';
       ctx.arc(p.x, p.y, BALL_R, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    ctx.fillStyle = '#d4b87e';
+    ctx.fillStyle = '#c8a96e';
     ctx.beginPath();
     ctx.arc(ball.x, ball.y, BALL_R, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.fillStyle = '#957550';
+    ctx.fillStyle = '#7a6040';
     roundRect(cpu.x, cpu.y, PADDLE_W, PADDLE_H, 3);
-    ctx.fillStyle = '#d4b87e';
+    ctx.fillStyle = '#c8a96e';
     roundRect(player.x, player.y, PADDLE_W, PADDLE_H, 3);
+
+    if (phase === 'paused') {
+      ctx.fillStyle = 'rgba(15, 13, 8, 0.55)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = '#c8a96e';
+      ctx.textAlign = 'center';
+      ctx.font = '14px Georgia, serif';
+      ctx.fillText('PAUSED', W / 2, H / 2);
+      ctx.textAlign = 'left';
+    }
   }
 
   function roundRect(x, y, w, h, r) {
@@ -607,6 +797,7 @@
     ctx.fill();
   }
 
+  setStatus('');
   requestAnimationFrame(tick);
 })();
   </script>
