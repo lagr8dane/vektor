@@ -259,15 +259,10 @@
       min-height: 100px;
     }
     .touch-bar.show { display: flex; }
-    .touch-split { display: flex; width: 100%; height: 100%; }
-    .touch-rot {
+    .touch-split { display: flex; width: 100%; height: 100%; align-items: stretch; }
+    .touch-side-btn {
       flex: 1;
-      display: flex;
-      border-right: 1px solid #2a2318;
-    }
-    .touch-rot button {
-      flex: 1;
-      height: 100%;
+      min-width: 0;
       min-height: 100px;
       background: rgba(200, 169, 110, 0.06);
       border: none;
@@ -278,9 +273,8 @@
       text-transform: uppercase;
       font-family: system-ui, sans-serif;
     }
-    .touch-rot button:last-child { border-right: none; }
-    .touch-rot button:active { background: rgba(200, 169, 110, 0.18); }
-    .touch-pause-wrap { flex: 1; display: flex; }
+    .touch-side-btn:active { background: rgba(200, 169, 110, 0.18); }
+    .touch-pause-wrap { flex: 1; display: flex; min-width: 0; border-right: 1px solid #2a2318; }
     .touch-pause-wrap button {
       flex: 1;
       width: 100%;
@@ -295,6 +289,7 @@
       font-family: system-ui, sans-serif;
     }
     .touch-pause-wrap button:active { background: rgba(200, 169, 110, 0.18); }
+    body.touch-ui #btnAgain { display: none !important; }
     @media (max-width: 480px) {
       .pills { display: none !important; }
       .pill-mobi.show { display: flex; }
@@ -398,13 +393,11 @@
   </div>
   <div class="touch-bar" id="touchBar">
     <div class="touch-split">
-      <div class="touch-rot">
-        <button type="button" id="touchL" aria-label="Rotate left">◀ ROT L</button>
-        <button type="button" id="touchR" aria-label="Rotate right">ROT R ▶</button>
-      </div>
+      <button type="button" class="touch-side-btn" id="touchL" aria-label="Move left">Left</button>
       <div class="touch-pause-wrap">
-        <button type="button" id="touchPause" aria-label="Pause">Pause</button>
+        <button type="button" id="touchPause" aria-label="Start or pause">Start</button>
       </div>
+      <button type="button" class="touch-side-btn" id="touchR" aria-label="Move right">Right</button>
     </div>
   </div>
   <script>
@@ -856,17 +849,18 @@
     const col = resolveSchemeColors(performance.now());
     elStatus.style.color = col.text;
     if (isTouchUI) {
+      touchPause.style.pointerEvents = '';
+      touchPause.style.opacity = '1';
       if (matchOver) {
-        touchPause.textContent = '';
-        touchPause.style.pointerEvents = 'none';
-        touchPause.style.opacity = '0.35';
+        touchPause.textContent = 'Start';
+      } else if (phase === 'idle') {
+        touchPause.textContent = 'Start';
+      } else if (phase === 'play' && !running && !paused) {
+        touchPause.textContent = 'Start';
+      } else if (paused) {
+        touchPause.textContent = 'Resume';
       } else {
-        touchPause.style.pointerEvents = '';
-        touchPause.style.opacity = '1';
-        if (phase === 'idle') touchPause.textContent = 'Tap to start';
-        else if (!running && !paused) touchPause.textContent = 'Tap to start';
-        else if (paused) touchPause.textContent = 'Resume';
-        else touchPause.textContent = 'Pause';
+        touchPause.textContent = 'Pause';
       }
     }
   }
@@ -946,14 +940,21 @@
     unlockAudioFromUserGesture();
     ensureAudio();
   }, () => { keys.right = false; });
-  touchPause.addEventListener('click', function () {
+  function onTouchCenter() {
     unlockAudioFromUserGesture();
+    if (matchOver) {
+      resetMatch();
+      startPlayFromIdle();
+      return;
+    }
     togglePause();
+  }
+  touchPause.addEventListener('click', function () {
+    onTouchCenter();
   });
   touchPause.addEventListener('touchstart', function (e) {
     e.preventDefault();
-    unlockAudioFromUserGesture();
-    togglePause();
+    onTouchCenter();
   }, { passive: false });
 
   btnAgain.addEventListener('click', () => resetMatch());
@@ -1006,8 +1007,8 @@
     ctx.fillStyle = '#6b5c3e';
     ctx.font = '11px system-ui, sans-serif';
     ctx.letterSpacing = '0.08em';
-    ctx.fillText(isTouchUI ? '◀  ▶  BUTTONS' : '←  →   OR   A  D', 72, iy + 16);
-    ctx.fillText('PAUSE    ' + (isTouchUI ? 'PAUSE BUTTON' : 'SPACE'), 72, iy + 32);
+    ctx.fillText(isTouchUI ? 'LEFT / RIGHT BUTTONS' : '←  →   OR   A  D', 72, iy + 16);
+    ctx.fillText('PAUSE    ' + (isTouchUI ? 'CENTER BUTTON' : 'SPACE'), 72, iy + 32);
     ctx.fillText('THEME    ' + (isTouchUI ? 'PILLS BELOW' : 'T'), 72, iy + 48);
     ctx.letterSpacing = '0';
     const blink = 0.3 + 0.7 * (0.5 + 0.5 * Math.sin(now / 1200 * Math.PI * 2));
@@ -1016,7 +1017,7 @@
     ctx.textAlign = 'center';
     ctx.font = '11px system-ui, sans-serif';
     ctx.letterSpacing = '0.12em';
-    ctx.fillText(isTouchUI ? 'TAP CANVAS TO START' : 'PRESS SPACE TO START', W / 2, H - 42);
+    ctx.fillText(isTouchUI ? 'CENTER BUTTON TO START' : 'PRESS SPACE TO START', W / 2, H - 42);
     ctx.letterSpacing = '0';
     ctx.globalAlpha = 1;
     ctx.textAlign = 'left';
@@ -1253,6 +1254,8 @@
           trail.length = 0;
           postScoreUntil = now + 1500;
           nextServeToPlayer = true;
+          running = false;
+          setStatus('');
         }
       } else if (ball.y + BALL_R < 0) {
         sndPlayerScore();
@@ -1265,6 +1268,8 @@
           trail.length = 0;
           postScoreUntil = now + 1500;
           nextServeToPlayer = false;
+          running = false;
+          setStatus('');
         }
       }
     }

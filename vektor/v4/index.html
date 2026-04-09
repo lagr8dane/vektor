@@ -41,7 +41,7 @@
       top: max(12px, env(safe-area-inset-top, 0px) + 4px);
       left: max(104px, env(safe-area-inset-left, 0px) + 100px);
     }
-    body.touch-ui .sound-toggle {
+    body.touch-ui .chrome-right {
       top: max(10px, env(safe-area-inset-top, 0px) + 2px);
       right: max(12px, env(safe-area-inset-right, 0px) + 8px);
     }
@@ -89,16 +89,23 @@
     @media (hover: hover) and (pointer: fine) {
       .hub-back:hover { color: #c8a96e; }
     }
-    .sound-toggle {
+    .chrome-right {
       position: absolute;
       top: 16px;
       right: 16px;
+      z-index: 30;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 8px;
+    }
+    .sound-toggle {
+      position: relative;
       font-size: 10px;
       letter-spacing: 0.12em;
       color: rgba(255, 248, 230, 0.92);
       text-transform: uppercase;
       font-family: system-ui, sans-serif;
-      z-index: 30;
       min-height: 44px;
       padding: 0 14px;
       border: 1px solid rgba(255,255,255,0.32);
@@ -150,9 +157,6 @@
       width: 44px;
       height: 44px;
       min-width: 44px;
-      align-self: center;
-      margin: 0 2px;
-      z-index: 15;
       border: 1px solid rgba(200,169,110,0.25);
       background: rgba(200,169,110,0.06);
       color: #c8a96e;
@@ -160,6 +164,7 @@
       font-family: system-ui, sans-serif;
       cursor: pointer;
       border-radius: 3px;
+      box-sizing: border-box;
     }
     .pause-ii.show { display: flex; align-items: center; justify-content: center; }
     .pause-ii:active { background: rgba(200,169,110,0.18); }
@@ -254,7 +259,10 @@
     <span class="atorgames-com">.com</span>
   </div>
   <a class="hub-back" href="/vektor/">← vektor</a>
-  <button type="button" class="sound-toggle" id="soundToggle" aria-pressed="true">Sound on</button>
+  <div class="chrome-right" id="chromeRight">
+    <button type="button" class="pause-ii" id="btnPause" aria-label="Pause">II</button>
+    <button type="button" class="sound-toggle" id="soundToggle" aria-pressed="true">Sound on</button>
+  </div>
   <audio id="iosAudioGate" playsinline preload="auto" style="position:absolute;width:0;height:0;opacity:0;pointer-events:none" aria-hidden="true"></audio>
   <div class="wrap-main">
     <div class="canvas-wrap" id="canvasWrap">
@@ -276,7 +284,6 @@
         <button type="button" class="touch-rot-side" id="tRotL">Left</button>
         <button type="button" class="touch-act" id="tThrust">Thrust</button>
         <button type="button" class="touch-act" id="tHyper">Hyper</button>
-        <button type="button" class="pause-ii" id="btnPause" aria-label="Pause">II</button>
         <button type="button" class="touch-act" id="tFire">Fire</button>
         <button type="button" class="touch-rot-side" id="tRotR">Right</button>
       </div>
@@ -625,7 +632,7 @@
     if (paletteHeadingMobiEl) paletteHeadingMobiEl.style.color = colorWithAlpha(col.text, 0.5);
     if (touchBar.classList.contains('show')) {
       touchBar.style.borderTopColor = colorWithAlpha(col.text, 0.38);
-      touchBar.querySelectorAll('.touch-act, .touch-rot-side, .pause-ii').forEach(function (btn) {
+      touchBar.querySelectorAll('.touch-act, .touch-rot-side').forEach(function (btn) {
         btn.style.color = colorWithAlpha(col.text, 0.88);
         btn.style.borderColor = colorWithAlpha(col.text, 0.22);
         btn.style.background = colorWithAlpha(col.text, 0.07);
@@ -1015,8 +1022,8 @@
     ctx.font = '11px system-ui, sans-serif';
     ctx.letterSpacing = '0.08em';
     if (isTouch) {
-      ctx.fillText('LEFT | THRUST | HYPER | II | FIRE | RIGHT', 100, iy + 16);
-      ctx.fillText('PAUSE     II (BOTTOM BAR, CENTER)', 100, iy + 32);
+      ctx.fillText('LEFT | THRUST | HYPER | FIRE | RIGHT', 100, iy + 16);
+      ctx.fillText('PAUSE     II (TOP, BESIDE SOUND)', 100, iy + 32);
       ctx.fillText('PALETTE   ROW ABOVE (SWIPE ◀ ▶)', 100, iy + 48);
       ctx.font = '10px system-ui, sans-serif';
       ctx.fillText('HUNTER   enemy ship (dashed) chases you — later waves', 100, iy + 64);
