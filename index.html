@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Vektor</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      min-height: 100%;
+      background: #0f0d08;
+      color: #c8a96e;
+      font-family: Georgia, "Times New Roman", serif;
+    }
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 32px 20px;
+      opacity: 0;
+      animation: pageIn 600ms ease forwards;
+    }
+    @keyframes pageIn {
+      to { opacity: 1; }
+    }
+    .wrap {
+      width: 100%;
+      max-width: 900px;
+      text-align: center;
+    }
+    .wordmark {
+      font-size: 64px;
+      letter-spacing: 0.3em;
+      color: #c8a96e;
+      text-indent: 0.3em;
+    }
+    @media (prefers-reduced-motion: no-preference) {
+      @media (min-width: 481px) {
+        .wordmark {
+          animation: breathe 4s ease-in-out infinite;
+        }
+      }
+    }
+    @keyframes breathe {
+      0%, 100% { letter-spacing: 0.28em; }
+      50% { letter-spacing: 0.34em; }
+    }
+    .tagline {
+      margin-top: 12px;
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      color: #6b5c3e;
+      text-transform: uppercase;
+      font-family: system-ui, sans-serif;
+    }
+    .rule {
+      border: none;
+      border-top: 1px solid rgba(200, 169, 110, 0.2);
+      max-width: 600px;
+      margin: 40px auto;
+    }
+    .cards {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 60px;
+    }
+    @media (max-width: 480px) {
+      .wordmark { font-size: 40px; }
+      .cards {
+        gap: 32px;
+        flex-direction: column;
+        align-items: center;
+      }
+      .card { text-align: center; }
+    }
+    .card {
+      width: 220px;
+      max-width: 100%;
+    }
+    .card-ver {
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      color: #3a3025;
+      text-transform: uppercase;
+      font-family: system-ui, sans-serif;
+    }
+    .card-title {
+      margin-top: 6px;
+      font-size: 22px;
+      color: #c8a96e;
+      transition: color 200ms ease;
+    }
+    @media (hover: hover) and (pointer: fine) {
+      a.card-link:hover .card-title { color: #ffffff; }
+    }
+    .card-desc {
+      margin: 8px 0 14px;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      color: #6b5c3e;
+      line-height: 1.45;
+      font-family: system-ui, sans-serif;
+    }
+    .btn-play {
+      display: inline-block;
+      border: 1px solid #c8a96e;
+      color: #c8a96e;
+      padding: 8px 20px;
+      font-size: 10px;
+      letter-spacing: 0.15em;
+      background: transparent;
+      cursor: pointer;
+      text-decoration: none;
+      text-transform: uppercase;
+      font-family: system-ui, sans-serif;
+      transition: background 200ms ease, color 200ms ease;
+      min-height: 44px;
+      min-width: 44px;
+      line-height: calc(44px - 18px);
+    }
+    @media (hover: hover) and (pointer: fine) {
+      .btn-play:hover { background: rgba(200, 169, 110, 0.1); }
+    }
+    .btn-soon {
+      border: 1px solid #3a3025;
+      color: #3a3025;
+      cursor: default;
+      pointer-events: none;
+    }
+    .footer {
+      margin-top: 60px;
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      color: #3a3025;
+      text-transform: uppercase;
+      font-family: system-ui, sans-serif;
+    }
+    .footer a {
+      color: #3a3025;
+      text-decoration: none;
+      transition: color 150ms ease;
+    }
+    @media (hover: hover) and (pointer: fine) {
+      .footer a:hover { color: #c8a96e; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1 class="wordmark">V E K T O R</h1>
+    <p class="tagline">An arcade experiment in progressive design</p>
+    <hr class="rule">
+    <div class="cards">
+      <article class="card">
+        <div class="card-ver">V1</div>
+        <a class="card-link" href="/v1/" style="text-decoration:none;color:inherit;">
+          <h2 class="card-title">Pong</h2>
+        </a>
+        <p class="card-desc">Baseline. Amber trail. CPU vs you.</p>
+        <a class="btn-play" href="/v1/">Play</a>
+      </article>
+      <article class="card">
+        <div class="card-ver">V2</div>
+        <a class="card-link" href="/v2/" style="text-decoration:none;color:inherit;">
+          <h2 class="card-title">Pong Enhanced</h2>
+        </a>
+        <p class="card-desc">Best of 5. Seven color schemes. Speed progression.</p>
+        <a class="btn-play" href="/v2/">Play</a>
+      </article>
+      <article class="card">
+        <div class="card-ver">V3</div>
+        <h2 class="card-title" style="cursor:default;">Obstacles</h2>
+        <p class="card-desc">Bumpers. Barriers. Gravity wells.</p>
+        <span class="btn-play btn-soon">Coming soon</span>
+      </article>
+    </div>
+    <footer class="footer">
+      A lab project · <a href="https://reachrota.com">reachrota.com</a>
+    </footer>
+  </div>
+</body>
+</html>
