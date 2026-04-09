@@ -2,9 +2,10 @@
 
 Progressively enhanced Pong-style arcade games in plain HTML, CSS, and JavaScript. No build step.
 
-- **Hub** — `/` (`index.html`)
-- **V1** — baseline Pong — `/v1/`
-- **V2** — match play (best of 5 games, first to 7 per game), seven color themes, Web Audio sounds — `/v2/`
+- **Hub** — `/` (`index.html`) — links to V1, V2, V4; V3 Breakout placeholder
+- **V1** — baseline Pong — `/v1/` — difficulty (CADET / PILOT / ACE), idle title screen, mobile control bar
+- **V2** — match play (best of 5 games, first to 7 per game), seven color themes, Web Audio sounds — `/v2/` — same difficulty + idle flow as V1
+- **V4** — Asteroids — `/v4/` — 800×600 canvas, schemes, hunters, high score (`localStorage`), mobile/desktop controls per spec
 
 Deploy on Vercel with framework **Other**, no build command, output directory **root**.
 
