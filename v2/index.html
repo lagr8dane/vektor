@@ -21,34 +21,35 @@
       position: relative;
       transition: background 0.2s ease;
     }
-    .back {
+    .hub-back {
       position: absolute;
-      top: 16px;
-      left: 16px;
+      top: 20px;
+      left: 24px;
       font-size: 10px;
-      letter-spacing: 0.18em;
-      color: rgba(255, 248, 230, 0.92);
+      letter-spacing: 0.12em;
+      color: #3a3025;
       text-transform: uppercase;
       text-decoration: none;
       font-family: system-ui, sans-serif;
-      transition: background 200ms ease, border-color 200ms ease, color 200ms ease;
-      z-index: 20;
+      transition: color 150ms ease;
+      z-index: 25;
       min-height: 44px;
-      padding: 0 16px;
       display: inline-flex;
       align-items: center;
-      justify-content: center;
-      border: 1px solid rgba(255, 255, 255, 0.32);
-      border-radius: 3px;
-      background: rgba(0, 0, 0, 0.35);
-      box-sizing: border-box;
     }
     @media (hover: hover) and (pointer: fine) {
-      .back:hover {
-        color: #fff;
-        background: rgba(255, 255, 255, 0.12);
-        border-color: rgba(255, 255, 255, 0.48);
-      }
+      .hub-back:hover { color: #c8a96e; }
+    }
+    .top-bar.hidden { visibility: hidden; }
+    .diff-hud {
+      margin-top: 6px;
+      font-size: 9px;
+      letter-spacing: 0.15em;
+      color: #3a3025;
+      text-transform: uppercase;
+      text-align: center;
+      font-family: system-ui, sans-serif;
+      width: min(600px, 96vw);
     }
     .top-bar {
       width: min(600px, 96vw);
@@ -185,6 +186,7 @@
       height: auto;
       aspect-ratio: 600 / 400;
     }
+    canvas.can-tap { cursor: pointer; }
     .win-layer {
       display: none;
       position: absolute;
@@ -249,38 +251,50 @@
     }
     .touch-bar {
       display: none;
-      width: min(600px, 96vw);
-      max-width: 600px;
+      width: 100vw;
+      max-width: 100%;
       margin-top: 0;
       border-top: 1px solid #2a2318;
-      flex-direction: column;
+      height: 100px;
+      min-height: 100px;
     }
     .touch-bar.show { display: flex; }
-    .touch-space {
-      width: 100%;
-      height: 44px;
-      min-height: 44px;
-      background: rgba(200, 169, 110, 0.08);
+    .touch-split { display: flex; width: 100%; height: 100%; }
+    .touch-rot {
+      flex: 1;
+      display: flex;
+      border-right: 1px solid #2a2318;
+    }
+    .touch-rot button {
+      flex: 1;
+      height: 100%;
+      min-height: 100px;
+      background: rgba(200, 169, 110, 0.06);
       border: none;
-      border-bottom: 1px solid #2a2318;
+      border-right: 1px solid #2a2318;
       color: #c8a96e;
-      font-size: 11px;
+      font-size: 10px;
       letter-spacing: 0.12em;
       text-transform: uppercase;
       font-family: system-ui, sans-serif;
     }
-    .touch-row { display: flex; width: 100%; }
-    .touch-arrow {
+    .touch-rot button:last-child { border-right: none; }
+    .touch-rot button:active { background: rgba(200, 169, 110, 0.18); }
+    .touch-pause-wrap { flex: 1; display: flex; }
+    .touch-pause-wrap button {
       flex: 1;
-      height: 56px;
-      min-height: 56px;
-      background: rgba(200, 169, 110, 0.08);
+      width: 100%;
+      height: 100%;
+      min-height: 100px;
+      background: rgba(200, 169, 110, 0.06);
       border: none;
       color: #c8a96e;
-      font-size: 20px;
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
       font-family: system-ui, sans-serif;
     }
-    .touch-arrow:first-child { border-right: 1px solid #2a2318; }
+    .touch-pause-wrap button:active { background: rgba(200, 169, 110, 0.18); }
     @media (max-width: 480px) {
       .pills { display: none !important; }
       .pill-mobi.show { display: flex; }
@@ -325,9 +339,9 @@
   </style>
 </head>
 <body>
-  <a class="back" href="/">← Back</a>
+  <a class="hub-back" href="/">← vektor</a>
   <button type="button" class="sound-toggle" id="soundToggle" aria-pressed="true" aria-label="Toggle game sound">Sound on</button>
-  <div class="top-bar">
+  <div class="top-bar hidden" id="topBar">
     <div class="scheme-name" id="schemeLabel">VEKTOR</div>
     <div class="score-block">
       <div class="score-row">
@@ -344,14 +358,6 @@
       </div>
     </div>
   </div>
-  <div class="pills" id="pills"></div>
-  <div class="pill-mobi" id="pillMobi">
-    <div class="pill-mobi-inner">
-      <button type="button" class="pill-nav" id="pillPrev" aria-label="Previous scheme">◀</button>
-      <div class="pill-mobi-label" id="pillMobiName">VEKTOR</div>
-      <button type="button" class="pill-nav" id="pillNext" aria-label="Next scheme">▶</button>
-    </div>
-  </div>
   <div class="canvas-wrap" id="canvasWrap">
     <div class="scanlines" id="scanlines" style="display:none;"></div>
     <canvas id="c" width="600" height="400"></canvas>
@@ -361,13 +367,26 @@
       <button type="button" class="btn-play" id="btnAgain">Play again</button>
     </div>
   </div>
-  <p class="status" id="status">Press space to start</p>
+  <p class="status" id="status"></p>
   <p class="hint" id="hintDesk">← → OR A D · SPACE PAUSE · T NEXT SCHEME</p>
+  <p class="diff-hud" id="diffHud">Pilot</p>
+  <div class="pills" id="pills"></div>
+  <div class="pill-mobi" id="pillMobi">
+    <div class="pill-mobi-inner">
+      <button type="button" class="pill-nav" id="pillPrev" aria-label="Previous scheme">◀</button>
+      <div class="pill-mobi-label" id="pillMobiName">VEKTOR</div>
+      <button type="button" class="pill-nav" id="pillNext" aria-label="Next scheme">▶</button>
+    </div>
+  </div>
   <div class="touch-bar" id="touchBar">
-    <button type="button" class="touch-space" id="touchSpace">Tap to start</button>
-    <div class="touch-row">
-      <button type="button" class="touch-arrow" id="touchL" aria-label="Left">◀</button>
-      <button type="button" class="touch-arrow" id="touchR" aria-label="Right">▶</button>
+    <div class="touch-split">
+      <div class="touch-rot">
+        <button type="button" id="touchL" aria-label="Rotate left">◀ ROT L</button>
+        <button type="button" id="touchR" aria-label="Rotate right">ROT R ▶</button>
+      </div>
+      <div class="touch-pause-wrap">
+        <button type="button" id="touchPause" aria-label="Pause">Pause</button>
+      </div>
     </div>
   </div>
   <script>
@@ -375,14 +394,27 @@
   const W = 600, H = 400;
   const PADDLE_W = 80, PADDLE_H = 10;
   const BALL_R = 7;
-  const SPEED_MIN = 4.5;
-  const SPEED_MAX = 10;
-  const CPU_BASE = 3.2;
   const PLAYER_SPEED = 7;
   const TRAIL_LEN = 16;
   const POINTS_TO_WIN_GAME = 7;
   const GAMES_TO_WIN_MATCH = 3;
   const FRAME_MS = 1000 / 60;
+  const DIFF_KEY = 'vektor-difficulty';
+  const DIFFICULTY = {
+    CADET: { cpuSpeed: 2.2, cpuError: 0.35, ballSpeed: 3.8, ballSpeedMax: 7.0, ballSpeedIncrement: 0.10 },
+    PILOT: { cpuSpeed: 3.2, cpuError: 0.18, ballSpeed: 4.5, ballSpeedMax: 9.0, ballSpeedIncrement: 0.15 },
+    ACE: { cpuSpeed: 4.8, cpuError: 0.06, ballSpeed: 5.5, ballSpeedMax: 11.0, ballSpeedIncrement: 0.22 }
+  };
+  const DIFF_NAMES = ['CADET', 'PILOT', 'ACE'];
+  function loadDiffKey() {
+    const k = localStorage.getItem(DIFF_KEY);
+    if (k === 'CADET' || k === 'PILOT' || k === 'ACE') return k;
+    return 'PILOT';
+  }
+  let diffKey = loadDiffKey();
+  function diff() { return DIFFICULTY[diffKey]; }
+  function speedMin() { return diff().ballSpeed; }
+  function speedMax() { return diff().ballSpeedMax; }
 
   function hexToRgb(hex) {
     const n = parseInt(hex.replace('#', ''), 16);
@@ -457,7 +489,9 @@
   const elStatus = document.getElementById('status');
   const hintDesk = document.getElementById('hintDesk');
   const touchBar = document.getElementById('touchBar');
-  const touchSpace = document.getElementById('touchSpace');
+  const touchPause = document.getElementById('touchPause');
+  const topBar = document.getElementById('topBar');
+  const diffHud = document.getElementById('diffHud');
   const touchL = document.getElementById('touchL');
   const touchR = document.getElementById('touchR');
   const scanEl = document.getElementById('scanlines');
@@ -480,7 +514,12 @@
   if (isTouchUI) {
     touchBar.classList.add('show');
     hintDesk.style.display = 'none';
+    canvas.classList.add('can-tap');
   }
+  function syncDiffHud() {
+    diffHud.textContent = diffKey.charAt(0) + diffKey.slice(1).toLowerCase();
+  }
+  syncDiffHud();
   if (isNarrow) pillMobi.classList.add('show');
 
   function buildDots() {
@@ -589,6 +628,32 @@
 
   let audioCtx = null;
   let audioPrimed = false;
+  var audioUnlockedOnce = false;
+  function getAudioCtx() {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    return audioCtx;
+  }
+  function unlockAudioSpec() {
+    if (audioUnlockedOnce || !soundEnabled) return;
+    try {
+      const ac = getAudioCtx();
+      if (ac.state === 'suspended') {
+        ac.resume().then(function () { audioUnlockedOnce = true; });
+      } else {
+        audioUnlockedOnce = true;
+      }
+      const buf = ac.createBuffer(1, 1, 22050);
+      const src = ac.createBufferSource();
+      src.buffer = buf;
+      src.connect(ac.destination);
+      src.start(0);
+    } catch (e) {}
+  }
+  document.addEventListener('touchstart', unlockAudioSpec, { once: true });
+  document.addEventListener('mousedown', unlockAudioSpec, { once: true });
+  document.addEventListener('keydown', unlockAudioSpec, { once: true });
   try {
     if (navigator.audioSession && 'type' in navigator.audioSession) {
       navigator.audioSession.type = 'playback';
@@ -596,25 +661,22 @@
   } catch (e) {}
   function ensureAudio() {
     if (!soundEnabled) return;
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if (!audioCtx && AC) audioCtx = new AC();
-    if (!audioCtx) return;
-    if (audioCtx.state === 'suspended') void audioCtx.resume();
+    const ac = getAudioCtx();
+    if (ac.state === 'suspended') void ac.resume();
   }
   function unlockAudioFromUserGesture() {
     if (!soundEnabled) return;
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) return;
-    if (!audioCtx) audioCtx = new AC();
+    const ac = getAudioCtx();
     try {
-      if (audioCtx.state === 'suspended') void audioCtx.resume();
-      var buf = audioCtx.createBuffer(1, 1, audioCtx.sampleRate);
-      var src = audioCtx.createBufferSource();
+      if (ac.state === 'suspended') void ac.resume();
+      var buf = ac.createBuffer(1, 1, ac.sampleRate);
+      var src = ac.createBufferSource();
       src.buffer = buf;
-      src.connect(audioCtx.destination);
+      src.connect(ac.destination);
       src.start(0);
     } catch (e) {}
     audioPrimed = true;
+    audioUnlockedOnce = true;
   }
   document.addEventListener('touchstart', function () {
     unlockAudioFromUserGesture();
@@ -701,7 +763,9 @@
   let postScoreUntil = 0;
   let nextServeToPlayer = true;
   let matchOver = false;
-  let ballSpeed = SPEED_MIN;
+  let phase = 'idle';
+  let ballSpeed = speedMin();
+  let diffHitRects = [];
   let pulseMs = 0;
   let flashPMs = 0, flashCMs = 0;
 
@@ -712,7 +776,7 @@
   const keys = { left: false, right: false };
 
   function cpuSpeedNow() {
-    return CPU_BASE + 0.1 * matchC;
+    return diff().cpuSpeed + 0.1 * matchC;
   }
 
   function resetMatch() {
@@ -720,9 +784,10 @@
     matchP = matchC = 0;
     matchOver = false;
     winLayer.classList.remove('on');
-    ballSpeed = SPEED_MIN;
+    ballSpeed = speedMin();
     running = false;
     paused = false;
+    phase = 'idle';
     postScoreUntil = 0;
     ball.x = W / 2;
     ball.y = H / 2;
@@ -730,11 +795,13 @@
     trail.length = 0;
     elP.textContent = '0';
     elC.textContent = '0';
+    topBar.classList.add('hidden');
+    if (isTouchUI) canvas.classList.add('can-tap');
     updateMatchDots(resolveSchemeColors(performance.now()).text);
-    setStatus('Press space to start');
+    setStatus('');
     if (isTouchUI) {
-      touchSpace.style.pointerEvents = '';
-      touchSpace.style.opacity = '1';
+      touchPause.style.pointerEvents = '';
+      touchPause.style.opacity = '1';
     }
   }
 
@@ -772,21 +839,39 @@
     elStatus.style.color = col.text;
     if (isTouchUI) {
       if (matchOver) {
-        touchSpace.textContent = '';
-        touchSpace.style.pointerEvents = 'none';
-        touchSpace.style.opacity = '0.35';
+        touchPause.textContent = '';
+        touchPause.style.pointerEvents = 'none';
+        touchPause.style.opacity = '0.35';
       } else {
-        touchSpace.style.pointerEvents = '';
-        touchSpace.style.opacity = '1';
-        if (!running && !paused) touchSpace.textContent = 'Tap to start';
-        else if (paused) touchSpace.textContent = 'Resume';
-        else touchSpace.textContent = 'Pause';
+        touchPause.style.pointerEvents = '';
+        touchPause.style.opacity = '1';
+        if (phase === 'idle') touchPause.textContent = 'Tap to start';
+        else if (!running && !paused) touchPause.textContent = 'Tap to start';
+        else if (paused) touchPause.textContent = 'Resume';
+        else touchPause.textContent = 'Pause';
       }
     }
   }
 
+  function startPlayFromIdle() {
+    if (matchOver) return;
+    ensureAudio();
+    ballSpeed = speedMin();
+    phase = 'play';
+    topBar.classList.remove('hidden');
+    canvas.classList.remove('can-tap');
+    running = true;
+    paused = false;
+    resetBall(Math.random() < 0.5);
+    setStatus('');
+  }
+
   function launchIfStopped() {
     if (matchOver) return;
+    if (phase === 'idle') {
+      startPlayFromIdle();
+      return;
+    }
     ensureAudio();
     if (!running) {
       running = true;
@@ -799,6 +884,10 @@
   function togglePause() {
     if (matchOver) return;
     ensureAudio();
+    if (phase === 'idle') {
+      startPlayFromIdle();
+      return;
+    }
     if (!running) {
       launchIfStopped();
       return;
@@ -839,17 +928,116 @@
     unlockAudioFromUserGesture();
     ensureAudio();
   }, () => { keys.right = false; });
-  touchSpace.addEventListener('click', function () {
+  touchPause.addEventListener('click', function () {
     unlockAudioFromUserGesture();
     togglePause();
   });
-  touchSpace.addEventListener('touchstart', function (e) {
+  touchPause.addEventListener('touchstart', function (e) {
     e.preventDefault();
     unlockAudioFromUserGesture();
     togglePause();
   }, { passive: false });
 
   btnAgain.addEventListener('click', () => resetMatch());
+
+  function drawIdleScreen(now) {
+    const col = resolveSchemeColors(now);
+    ctx.fillStyle = col.bg;
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = col.text;
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 32px Georgia, serif';
+    ctx.letterSpacing = '0.22em';
+    ctx.fillText('V E K T O R', W / 2, 56);
+    ctx.letterSpacing = '0';
+    ctx.fillStyle = '#6b5c3e';
+    ctx.font = '11px system-ui, sans-serif';
+    ctx.letterSpacing = '0.15em';
+    ctx.fillText('P O N G   E N H A N C E D', W / 2, 88);
+    ctx.letterSpacing = '0';
+    const labels = ['CADET', 'PILOT', 'ACE'];
+    diffHitRects = [];
+    const sizes = [];
+    ctx.font = '11px system-ui, sans-serif';
+    ctx.letterSpacing = '0.15em';
+    let totalW = 0;
+    for (let i = 0; i < 3; i++) {
+      sizes.push(ctx.measureText(labels[i]).width);
+      totalW += sizes[i];
+    }
+    totalW += 80;
+    let cx = W / 2 - totalW / 2;
+    ctx.textAlign = 'center';
+    for (let j = 0; j < 3; j++) {
+      const key = DIFF_NAMES[j];
+      const active = diffKey === key;
+      ctx.fillStyle = active ? col.text : '#3a3025';
+      const mid = cx + sizes[j] / 2;
+      ctx.fillText(labels[j], mid, 118);
+      diffHitRects.push({ key, x: cx - 4, y: 118 - 14, w: sizes[j] + 8, h: 22 });
+      cx += sizes[j] + 40;
+    }
+    ctx.textAlign = 'left';
+    ctx.letterSpacing = '0';
+    const iy = 148;
+    ctx.fillStyle = '#3a3025';
+    ctx.font = '9px system-ui, sans-serif';
+    ctx.letterSpacing = '0.15em';
+    ctx.fillText('MOVE', 72, iy);
+    ctx.letterSpacing = '0';
+    ctx.fillStyle = '#6b5c3e';
+    ctx.font = '11px system-ui, sans-serif';
+    ctx.letterSpacing = '0.08em';
+    ctx.fillText(isTouchUI ? '◀  ▶  BUTTONS' : '←  →   OR   A  D', 72, iy + 16);
+    ctx.fillText('PAUSE    ' + (isTouchUI ? 'PAUSE BUTTON' : 'SPACE'), 72, iy + 32);
+    ctx.fillText('THEME    ' + (isTouchUI ? 'PILLS BELOW' : 'T'), 72, iy + 48);
+    ctx.letterSpacing = '0';
+    const blink = 0.3 + 0.7 * (0.5 + 0.5 * Math.sin(now / 1200 * Math.PI * 2));
+    ctx.globalAlpha = blink;
+    ctx.fillStyle = col.text;
+    ctx.textAlign = 'center';
+    ctx.font = '11px system-ui, sans-serif';
+    ctx.letterSpacing = '0.12em';
+    ctx.fillText(isTouchUI ? 'TAP CANVAS TO START' : 'PRESS SPACE TO START', W / 2, H - 42);
+    ctx.letterSpacing = '0';
+    ctx.globalAlpha = 1;
+    ctx.textAlign = 'left';
+  }
+
+  function canvasToLogical(clientX, clientY) {
+    const r = canvas.getBoundingClientRect();
+    return {
+      x: (clientX - r.left) / r.width * W,
+      y: (clientY - r.top) / r.height * H
+    };
+  }
+  function hitDiff(px, py) {
+    for (let i = 0; i < diffHitRects.length; i++) {
+      const r = diffHitRects[i];
+      if (px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h) return r.key;
+    }
+    return null;
+  }
+  function onCanvasPointer(ev) {
+    if (phase !== 'idle' || matchOver) return;
+    const p = canvasToLogical(ev.clientX, ev.clientY);
+    const hit = hitDiff(p.x, p.y);
+    if (hit) {
+      diffKey = hit;
+      localStorage.setItem(DIFF_KEY, diffKey);
+      syncDiffHud();
+      return;
+    }
+    unlockAudioFromUserGesture();
+    startPlayFromIdle();
+  }
+  canvas.addEventListener('click', onCanvasPointer);
+  canvas.addEventListener('touchstart', function (e) {
+    if (phase !== 'idle' || matchOver) return;
+    e.preventDefault();
+    const t = e.changedTouches[0];
+    onCanvasPointer({ clientX: t.clientX, clientY: t.clientY });
+  }, { passive: false });
 
   function clampPaddle(px) {
     return Math.max(0, Math.min(W - PADDLE_W, px));
@@ -880,7 +1068,7 @@
     relative = Math.max(-1, Math.min(1, relative));
     const maxAng = Math.PI * 0.35;
     const angle = relative * maxAng;
-    ballSpeed = Math.min(SPEED_MAX, ballSpeed + 0.15);
+    ballSpeed = Math.min(speedMax(), ballSpeed + diff().ballSpeedIncrement);
     if (isPlayer) {
       ball.vx = Math.sin(angle) * ballSpeed;
       ball.vy = -Math.abs(Math.cos(angle) * ballSpeed);
@@ -938,7 +1126,7 @@
       gameP = gameC = 0;
       elP.textContent = '0';
       elC.textContent = '0';
-      ballSpeed = SPEED_MIN;
+      ballSpeed = speedMin();
       updateMatchDots(resolveSchemeColors(performance.now()).text);
       if (matchP >= GAMES_TO_WIN_MATCH) endMatch(true);
     } else if (gameC >= POINTS_TO_WIN_GAME) {
@@ -946,7 +1134,7 @@
       gameP = gameC = 0;
       elP.textContent = '0';
       elC.textContent = '0';
-      ballSpeed = SPEED_MIN;
+      ballSpeed = speedMin();
       updateMatchDots(resolveSchemeColors(performance.now()).text);
       if (matchC >= GAMES_TO_WIN_MATCH) endMatch(false);
     }
@@ -973,6 +1161,11 @@
         lastDotsHueUpdate = now;
         updateMatchDots(col.text);
       }
+    }
+
+    if (phase === 'idle' && !matchOver) {
+      drawIdleScreen(now);
+      return;
     }
 
     ctx.fillStyle = col.bg;
@@ -1009,7 +1202,8 @@
       if (keys.right) player.x = clampPaddle(player.x + PLAYER_SPEED * f);
 
       const csp = cpuSpeedNow();
-      const target = ball.x + ball.vx * 8;
+      const errOff = (Math.random() - 0.5) * PADDLE_W * diff().cpuError;
+      const target = ball.x + ball.vx * 8 + errOff;
       const cx = cpu.x + PADDLE_W / 2;
       if (target < cx - 2) cpu.x = clampPaddle(cpu.x - csp * f);
       else if (target > cx + 2) cpu.x = clampPaddle(cpu.x + csp * f);
@@ -1063,7 +1257,7 @@
 
     trail.unshift({ x: ball.x, y: ball.y });
     if (trail.length > TRAIL_LEN) trail.pop();
-    const speedT = (ballSpeed - SPEED_MIN) / (SPEED_MAX - SPEED_MIN);
+    const speedT = (ballSpeed - speedMin()) / (speedMax() - speedMin() || 1);
     for (let i = trail.length - 1; i >= 0; i--) {
       const p = trail[i];
       const t = i / (TRAIL_LEN - 1 || 1);
@@ -1121,6 +1315,9 @@
   }
 
   setScheme(0);
+  topBar.classList.add('hidden');
+  phase = 'idle';
+  setStatus('');
   requestAnimationFrame(tick);
 })();
   </script>
