@@ -1,10 +1,12 @@
-# AtorGames
+# Vektor
 
-Root `index.html` is the AtorGames home experience (AG morph, WarGames question, world picks).
+Progressively enhanced Rally-style arcade games in plain HTML, CSS, and JavaScript. No build step.
 
-- **Arcade** → `/vektor/` — Vektor hub (Pong, Asteroids, …)
-- **Gunner** → `/gunner/` — Professor Gunner's Schoolhouse (placeholder)
+- **Hub** — `/` (`index.html`) — links to V1, V2, V4; V3 Breach placeholder
+- **V1** — baseline Rally — `/v1/` — difficulty (CADET / PILOT / ACE), idle title screen, mobile control bar
+- **V2** — match play (best of 5 games, first to 7 per game), seven color themes, Web Audio sounds — `/v2/` — same difficulty + idle flow as V1
+- **V4** — Debris — `/v4/` — 800×600 canvas, schemes, hunters, high score (`localStorage`), mobile/desktop controls per spec
 
-Deploy with **output directory = repo root** (no build). On Vercel: framework **Other**, no build command.
+Deploy on Vercel with framework **Other**, no build command, output directory **root**.
 
-Paths assume the site is served from this folder as the host root (`/`, `/vektor/`, `/gunner/`).
+Palette and structure follow the project brief; audio is synthesized with the Web Audio API (no audio files).

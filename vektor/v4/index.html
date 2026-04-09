@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Vektor — V4</title>
+  <title>Debris — Vektor · V4</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { min-height: 100%; background: #0f0d08; font-family: Georgia, serif; }
@@ -285,7 +285,7 @@
   const W = 800, H = 600;
   const FRAME_MS = 1000 / 60;
   const DIFF_KEY = 'vektor-difficulty';
-  const HS_KEY = 'vektor-asteroids-hs';
+  const HS_KEY = 'vektor-debris-hs';
   const DIFF_AST = {
     CADET: { asteroidSpeedMult: 0.7, bulletMax: 4, bulletLifetime: 80, bulletCooldown: 10, huntModeWave: 6, huntTurnRate: 0.005, swarmThreshold: 300, extraLifeScore: 15000 },
     PILOT: { asteroidSpeedMult: 1.0, bulletMax: 4, bulletLifetime: 65, bulletCooldown: 12, huntModeWave: 4, huntTurnRate: 0.008, swarmThreshold: 200, extraLifeScore: 10000 },
@@ -970,7 +970,7 @@
     ctx.fillStyle = '#6b5c3e';
     ctx.font = '11px system-ui, sans-serif';
     ctx.letterSpacing = '0.15em';
-    ctx.fillText('A S T E R O I D S', W / 2, 138);
+    ctx.fillText('D E B R I S', W / 2, 138);
     ctx.letterSpacing = '0';
     var hs = loadHS();
     ctx.font = '10px system-ui, sans-serif';
