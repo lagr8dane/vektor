@@ -173,6 +173,7 @@
   const CPU_SPEED = 3.2;
   const PLAYER_SPEED = 7;
   const TRAIL_LEN = 8;
+  const FRAME_MS = 1000 / 60;
 
   const canvas = document.getElementById('c');
   const ctx = canvas.getContext('2d');
@@ -192,28 +193,57 @@
   }
 
   let audioCtx = null;
+  let audioPrimed = false;
   function ensureAudio() {
-    if (!audioCtx) {
-      const AC = window.AudioContext || window.webkitAudioContext;
-      if (AC) audioCtx = new AC();
-    }
-    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!audioCtx && AC) audioCtx = new AC();
+    if (!audioCtx) return;
+    if (audioCtx.state === 'suspended') void audioCtx.resume();
   }
+  /** iOS Safari: AudioContext must resume from a gesture; resume() is async. */
+  function primeAudioFromGesture() {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!audioCtx && AC) audioCtx = new AC();
+    if (!audioCtx) return;
+    const playSilent = function () {
+      try {
+        const osc = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        g.gain.setValueAtTime(0.0001, audioCtx.currentTime);
+        osc.connect(g);
+        g.connect(audioCtx.destination);
+        osc.start(audioCtx.currentTime);
+        osc.stop(audioCtx.currentTime + 0.02);
+      } catch (e) {}
+    };
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume().then(playSilent);
+    } else if (!audioPrimed) {
+      playSilent();
+    }
+    audioPrimed = true;
+  }
+  document.addEventListener('touchstart', primeAudioFromGesture, { capture: true, passive: true });
+  document.addEventListener('pointerdown', primeAudioFromGesture, { capture: true, passive: true });
 
   function beep({ type, freq, dur, vol }) {
     if (!audioCtx) return;
-    const t0 = audioCtx.currentTime;
-    const osc = audioCtx.createOscillator();
-    const g = audioCtx.createGain();
-    osc.type = type;
-    osc.frequency.setValueAtTime(freq, t0);
-    g.gain.setValueAtTime(0, t0);
-    g.gain.linearRampToValueAtTime(vol, t0 + 0.005);
-    g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
-    osc.connect(g);
-    g.connect(audioCtx.destination);
-    osc.start(t0);
-    osc.stop(t0 + dur + 0.02);
+    const play = function () {
+      const t0 = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, t0);
+      g.gain.setValueAtTime(0, t0);
+      g.gain.linearRampToValueAtTime(vol, t0 + 0.005);
+      g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+      osc.connect(g);
+      g.connect(audioCtx.destination);
+      osc.start(t0);
+      osc.stop(t0 + dur + 0.02);
+    };
+    if (audioCtx.state === 'running') play();
+    else void audioCtx.resume().then(play);
   }
 
   function sndPlayerHit() { beep({ type: 'square', freq: 440, dur: 0.1, vol: 0.15 }); }
@@ -222,18 +252,22 @@
   function sndPlayerScore() { beep({ type: 'square', freq: 660, dur: 0.25, vol: 0.18 }); }
   function sndCpuScore() {
     if (!audioCtx) return;
-    const t0 = audioCtx.currentTime;
-    const osc = audioCtx.createOscillator();
-    const g = audioCtx.createGain();
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(160, t0);
-    g.gain.setValueAtTime(0, t0);
-    g.gain.linearRampToValueAtTime(0.2, t0 + 0.01);
-    g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.3);
-    osc.connect(g);
-    g.connect(audioCtx.destination);
-    osc.start(t0);
-    osc.stop(t0 + 0.35);
+    const play = function () {
+      const t0 = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(160, t0);
+      g.gain.setValueAtTime(0, t0);
+      g.gain.linearRampToValueAtTime(0.2, t0 + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.3);
+      osc.connect(g);
+      g.connect(audioCtx.destination);
+      osc.start(t0);
+      osc.stop(t0 + 0.35);
+    };
+    if (audioCtx.state === 'running') play();
+    else void audioCtx.resume().then(play);
   }
 
   let scoreP = 0, scoreC = 0;
@@ -365,8 +399,12 @@
     }
   }
 
+  let lastTick = 0;
   function tick(now) {
     requestAnimationFrame(tick);
+    const dtMs = lastTick ? Math.min(64, now - lastTick) : FRAME_MS;
+    lastTick = now;
+    const f = dtMs / FRAME_MS;
 
     ctx.fillStyle = '#16130e';
     ctx.fillRect(0, 0, W, H);
@@ -379,16 +417,16 @@
     ctx.setLineDash([]);
 
     if (running && !paused && now >= postScoreUntil) {
-      if (keys.left) player.x = clampPaddle(player.x - PLAYER_SPEED);
-      if (keys.right) player.x = clampPaddle(player.x + PLAYER_SPEED);
+      if (keys.left) player.x = clampPaddle(player.x - PLAYER_SPEED * f);
+      if (keys.right) player.x = clampPaddle(player.x + PLAYER_SPEED * f);
 
       const target = ball.x + ball.vx * 8;
       const cx = cpu.x + PADDLE_W / 2;
-      if (target < cx - 2) cpu.x = clampPaddle(cpu.x - CPU_SPEED);
-      else if (target > cx + 2) cpu.x = clampPaddle(cpu.x + CPU_SPEED);
+      if (target < cx - 2) cpu.x = clampPaddle(cpu.x - CPU_SPEED * f);
+      else if (target > cx + 2) cpu.x = clampPaddle(cpu.x + CPU_SPEED * f);
 
-      ball.x += ball.vx;
-      ball.y += ball.vy;
+      ball.x += ball.vx * f;
+      ball.y += ball.vy * f;
 
       if (ball.x - BALL_R <= 0) {
         ball.x = BALL_R;

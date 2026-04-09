@@ -347,6 +347,7 @@
   const TRAIL_LEN = 16;
   const POINTS_TO_WIN_GAME = 7;
   const GAMES_TO_WIN_MATCH = 3;
+  const FRAME_MS = 1000 / 60;
 
   function hexToRgb(hex) {
     const n = parseInt(hex.replace('#', ''), 16);
@@ -525,13 +526,37 @@
   pillMobiName.addEventListener('click', () => setScheme(schemeIndex + 1));
 
   let audioCtx = null;
+  let audioPrimed = false;
   function ensureAudio() {
-    if (!audioCtx) {
-      const AC = window.AudioContext || window.webkitAudioContext;
-      if (AC) audioCtx = new AC();
-    }
-    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!audioCtx && AC) audioCtx = new AC();
+    if (!audioCtx) return;
+    if (audioCtx.state === 'suspended') void audioCtx.resume();
   }
+  function primeAudioFromGesture() {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!audioCtx && AC) audioCtx = new AC();
+    if (!audioCtx) return;
+    const playSilent = function () {
+      try {
+        const osc = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        g.gain.setValueAtTime(0.0001, audioCtx.currentTime);
+        osc.connect(g);
+        g.connect(audioCtx.destination);
+        osc.start(audioCtx.currentTime);
+        osc.stop(audioCtx.currentTime + 0.02);
+      } catch (e) {}
+    };
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume().then(playSilent);
+    } else if (!audioPrimed) {
+      playSilent();
+    }
+    audioPrimed = true;
+  }
+  document.addEventListener('touchstart', primeAudioFromGesture, { capture: true, passive: true });
+  document.addEventListener('pointerdown', primeAudioFromGesture, { capture: true, passive: true });
 
   function beep({ type, freq, dur, vol, t0 }) {
     if (!audioCtx) return;
@@ -549,34 +574,48 @@
     osc.stop(start + dur + 0.03);
   }
 
-  function sndPlayerHit() { beep({ type: 'square', freq: 440, dur: 0.1, vol: 0.15 }); }
-  function sndCpuHit() { beep({ type: 'square', freq: 330, dur: 0.1, vol: 0.12 }); }
-  function sndWall() { beep({ type: 'sine', freq: 220, dur: 0.08, vol: 0.1 }); }
-  function sndPlayerScore() {
+  function withRunningAudio(fn) {
     if (!audioCtx) return;
-    const t0 = audioCtx.currentTime;
-    beep({ type: 'square', freq: 523, dur: 0.08, vol: 0.16, t0: t0 });
-    beep({ type: 'square', freq: 659, dur: 0.08, vol: 0.16, t0: t0 + 0.09 });
-    beep({ type: 'square', freq: 784, dur: 0.08, vol: 0.16, t0: t0 + 0.18 });
+    if (audioCtx.state === 'running') fn();
+    else void audioCtx.resume().then(fn);
+  }
+
+  function sndPlayerHit() { withRunningAudio(() => beep({ type: 'square', freq: 440, dur: 0.1, vol: 0.15 })); }
+  function sndCpuHit() { withRunningAudio(() => beep({ type: 'square', freq: 330, dur: 0.1, vol: 0.12 })); }
+  function sndWall() { withRunningAudio(() => beep({ type: 'sine', freq: 220, dur: 0.08, vol: 0.1 })); }
+  function sndPlayerScore() {
+    withRunningAudio(() => {
+      if (!audioCtx) return;
+      const t0 = audioCtx.currentTime;
+      beep({ type: 'square', freq: 523, dur: 0.08, vol: 0.16, t0: t0 });
+      beep({ type: 'square', freq: 659, dur: 0.08, vol: 0.16, t0: t0 + 0.09 });
+      beep({ type: 'square', freq: 784, dur: 0.08, vol: 0.16, t0: t0 + 0.18 });
+    });
   }
   function sndCpuScore() {
-    if (!audioCtx) return;
-    const t0 = audioCtx.currentTime;
-    beep({ type: 'square', freq: 300, dur: 0.12, vol: 0.18, t0: t0 });
-    beep({ type: 'square', freq: 220, dur: 0.12, vol: 0.18, t0: t0 + 0.12 });
+    withRunningAudio(() => {
+      if (!audioCtx) return;
+      const t0 = audioCtx.currentTime;
+      beep({ type: 'square', freq: 300, dur: 0.12, vol: 0.18, t0: t0 });
+      beep({ type: 'square', freq: 220, dur: 0.12, vol: 0.18, t0: t0 + 0.12 });
+    });
   }
   function sndMatchWinPlayer() {
-    if (!audioCtx) return;
-    const t0 = audioCtx.currentTime;
-    [440, 554, 659, 880].forEach((f, i) => {
-      beep({ type: 'square', freq: f, dur: 0.1, vol: 0.2, t0: t0 + i * 0.12 });
+    withRunningAudio(() => {
+      if (!audioCtx) return;
+      const t0 = audioCtx.currentTime;
+      [440, 554, 659, 880].forEach((f, i) => {
+        beep({ type: 'square', freq: f, dur: 0.1, vol: 0.2, t0: t0 + i * 0.12 });
+      });
     });
   }
   function sndMatchWinCpu() {
-    if (!audioCtx) return;
-    const t0 = audioCtx.currentTime;
-    beep({ type: 'square', freq: 200, dur: 0.15, vol: 0.2, t0: t0 });
-    beep({ type: 'square', freq: 120, dur: 0.2, vol: 0.18, t0: t0 + 0.14 });
+    withRunningAudio(() => {
+      if (!audioCtx) return;
+      const t0 = audioCtx.currentTime;
+      beep({ type: 'square', freq: 200, dur: 0.15, vol: 0.2, t0: t0 });
+      beep({ type: 'square', freq: 120, dur: 0.2, vol: 0.18, t0: t0 + 0.14 });
+    });
   }
 
   let gameP = 0, gameC = 0;
@@ -826,11 +865,12 @@
   let lastDotsHueUpdate = 0;
   function tick(now) {
     requestAnimationFrame(tick);
-    const dt = lastNow ? Math.min(32, now - lastNow) : 16;
+    const dtMs = lastNow ? Math.min(64, now - lastNow) : FRAME_MS;
     lastNow = now;
-    if (pulseMs > 0) pulseMs = Math.max(0, pulseMs - dt);
-    if (flashPMs > 0) flashPMs = Math.max(0, flashPMs - dt);
-    if (flashCMs > 0) flashCMs = Math.max(0, flashCMs - dt);
+    const f = dtMs / FRAME_MS;
+    if (pulseMs > 0) pulseMs = Math.max(0, pulseMs - dtMs);
+    if (flashPMs > 0) flashPMs = Math.max(0, flashPMs - dtMs);
+    if (flashCMs > 0) flashCMs = Math.max(0, flashCMs - dtMs);
 
     const col = resolveSchemeColors(now);
     if (col.disco) {
@@ -874,17 +914,17 @@
     const drawR = BALL_R + extraR;
 
     if (running && !paused && !matchOver && now >= postScoreUntil) {
-      if (keys.left) player.x = clampPaddle(player.x - PLAYER_SPEED);
-      if (keys.right) player.x = clampPaddle(player.x + PLAYER_SPEED);
+      if (keys.left) player.x = clampPaddle(player.x - PLAYER_SPEED * f);
+      if (keys.right) player.x = clampPaddle(player.x + PLAYER_SPEED * f);
 
       const csp = cpuSpeedNow();
       const target = ball.x + ball.vx * 8;
       const cx = cpu.x + PADDLE_W / 2;
-      if (target < cx - 2) cpu.x = clampPaddle(cpu.x - csp);
-      else if (target > cx + 2) cpu.x = clampPaddle(cpu.x + csp);
+      if (target < cx - 2) cpu.x = clampPaddle(cpu.x - csp * f);
+      else if (target > cx + 2) cpu.x = clampPaddle(cpu.x + csp * f);
 
-      ball.x += ball.vx;
-      ball.y += ball.vy;
+      ball.x += ball.vx * f;
+      ball.y += ball.vy * f;
 
       if (ball.x - BALL_R <= 0) {
         ball.x = BALL_R;
