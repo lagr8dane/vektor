@@ -138,10 +138,48 @@
       font-family: system-ui, sans-serif;
     }
     .touch-arrow:first-child { border-right: 1px solid #3a3228; }
+    .sound-toggle {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      color: #d4b87e;
+      text-transform: uppercase;
+      font-family: system-ui, sans-serif;
+      transition: background 200ms ease, color 200ms ease, border-color 200ms ease;
+      z-index: 10;
+      min-height: 44px;
+      padding: 0 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(212, 184, 126, 0.55);
+      border-radius: 3px;
+      background: rgba(212, 184, 126, 0.08);
+      cursor: pointer;
+      box-sizing: border-box;
+    }
+    .sound-toggle[aria-pressed="false"] {
+      color: #6d5e42;
+      border-color: rgba(109, 94, 66, 0.5);
+      background: rgba(0, 0, 0, 0.15);
+    }
+    @media (hover: hover) and (pointer: fine) {
+      .sound-toggle:hover {
+        color: #f0e6c8;
+        background: rgba(212, 184, 126, 0.16);
+        border-color: rgba(240, 230, 200, 0.5);
+      }
+      .sound-toggle[aria-pressed="false"]:hover {
+        color: #8f7d56;
+      }
+    }
   </style>
 </head>
 <body>
   <a class="back" href="/">← Back</a>
+  <button type="button" class="sound-toggle" id="soundToggle" aria-pressed="true" aria-label="Toggle game sound">Sound on</button>
   <div class="score-row">
     <div class="score-side">
       <div class="score-label">You</div>
@@ -192,9 +230,28 @@
     hintDesk.style.display = 'none';
   }
 
+  const SOUND_KEY = 'vektor-v1-sound';
+  let soundEnabled = localStorage.getItem(SOUND_KEY) !== '0';
+  const soundToggle = document.getElementById('soundToggle');
+  function syncSoundUi() {
+    soundToggle.textContent = soundEnabled ? 'Sound on' : 'Sound off';
+    soundToggle.setAttribute('aria-pressed', soundEnabled ? 'true' : 'false');
+  }
+  syncSoundUi();
+  soundToggle.addEventListener('click', function () {
+    soundEnabled = !soundEnabled;
+    localStorage.setItem(SOUND_KEY, soundEnabled ? '1' : '0');
+    syncSoundUi();
+    if (soundEnabled) {
+      ensureAudio();
+      primeAudioFromGesture();
+    }
+  });
+
   let audioCtx = null;
   let audioPrimed = false;
   function ensureAudio() {
+    if (!soundEnabled) return;
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!audioCtx && AC) audioCtx = new AC();
     if (!audioCtx) return;
@@ -202,6 +259,7 @@
   }
   /** iOS Safari: AudioContext must resume from a gesture; resume() is async. */
   function primeAudioFromGesture() {
+    if (!soundEnabled) return;
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!audioCtx && AC) audioCtx = new AC();
     if (!audioCtx) return;
@@ -227,7 +285,7 @@
   document.addEventListener('pointerdown', primeAudioFromGesture, { capture: true, passive: true });
 
   function beep({ type, freq, dur, vol }) {
-    if (!audioCtx) return;
+    if (!soundEnabled || !audioCtx) return;
     const play = function () {
       const t0 = audioCtx.currentTime;
       const osc = audioCtx.createOscillator();
@@ -251,7 +309,7 @@
   function sndWall() { beep({ type: 'sine', freq: 220, dur: 0.08, vol: 0.1 }); }
   function sndPlayerScore() { beep({ type: 'square', freq: 660, dur: 0.25, vol: 0.18 }); }
   function sndCpuScore() {
-    if (!audioCtx) return;
+    if (!soundEnabled || !audioCtx) return;
     const play = function () {
       const t0 = audioCtx.currentTime;
       const osc = audioCtx.createOscillator();

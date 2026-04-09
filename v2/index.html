@@ -288,10 +288,45 @@
     @media (min-width: 481px) {
       .pill-mobi { display: none !important; }
     }
+    .sound-toggle {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      color: rgba(255, 248, 230, 0.92);
+      text-transform: uppercase;
+      font-family: system-ui, sans-serif;
+      transition: background 200ms ease, border-color 200ms ease, color 200ms ease;
+      z-index: 20;
+      min-height: 44px;
+      padding: 0 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(255, 255, 255, 0.32);
+      border-radius: 3px;
+      background: rgba(0, 0, 0, 0.35);
+      cursor: pointer;
+      box-sizing: border-box;
+    }
+    .sound-toggle[aria-pressed="false"] {
+      color: rgba(255, 255, 255, 0.45);
+      border-color: rgba(255, 255, 255, 0.18);
+      background: rgba(0, 0, 0, 0.2);
+    }
+    @media (hover: hover) and (pointer: fine) {
+      .sound-toggle:hover {
+        color: #fff;
+        background: rgba(255, 255, 255, 0.12);
+        border-color: rgba(255, 255, 255, 0.48);
+      }
+    }
   </style>
 </head>
 <body>
   <a class="back" href="/">← Back</a>
+  <button type="button" class="sound-toggle" id="soundToggle" aria-pressed="true" aria-label="Toggle game sound">Sound on</button>
   <div class="top-bar">
     <div class="scheme-name" id="schemeLabel">VEKTOR</div>
     <div class="score-block">
@@ -525,15 +560,35 @@
   pillNext.addEventListener('click', () => setScheme(schemeIndex + 1));
   pillMobiName.addEventListener('click', () => setScheme(schemeIndex + 1));
 
+  const SOUND_KEY = 'vektor-v2-sound';
+  let soundEnabled = localStorage.getItem(SOUND_KEY) !== '0';
+  const soundToggle = document.getElementById('soundToggle');
+  function syncSoundUi() {
+    soundToggle.textContent = soundEnabled ? 'Sound on' : 'Sound off';
+    soundToggle.setAttribute('aria-pressed', soundEnabled ? 'true' : 'false');
+  }
+  syncSoundUi();
+  soundToggle.addEventListener('click', function () {
+    soundEnabled = !soundEnabled;
+    localStorage.setItem(SOUND_KEY, soundEnabled ? '1' : '0');
+    syncSoundUi();
+    if (soundEnabled) {
+      ensureAudio();
+      primeAudioFromGesture();
+    }
+  });
+
   let audioCtx = null;
   let audioPrimed = false;
   function ensureAudio() {
+    if (!soundEnabled) return;
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!audioCtx && AC) audioCtx = new AC();
     if (!audioCtx) return;
     if (audioCtx.state === 'suspended') void audioCtx.resume();
   }
   function primeAudioFromGesture() {
+    if (!soundEnabled) return;
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!audioCtx && AC) audioCtx = new AC();
     if (!audioCtx) return;
@@ -575,7 +630,7 @@
   }
 
   function withRunningAudio(fn) {
-    if (!audioCtx) return;
+    if (!soundEnabled || !audioCtx) return;
     if (audioCtx.state === 'running') fn();
     else void audioCtx.resume().then(fn);
   }
