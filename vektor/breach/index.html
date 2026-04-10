@@ -432,58 +432,86 @@
   }
 
   // ——————————————————————————————————————————————————————————————
-  // AUDIO
+  // AUDIO (Web Audio: context often starts "suspended" until a user gesture.
+  // We prime on input and only schedule oscillators after resume() resolves.)
   // ——————————————————————————————————————————————————————————————
   var soundOn = localStorage.getItem('vektor-breach-sound') !== '0';
   var actx = null;
+
   function getA() {
     if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
     return actx;
   }
-  function resumeA() {
-    try { if (actx && actx.state === 'suspended') void actx.resume(); } catch (e) {}
+
+  function primeAudioFromGesture() {
+    try {
+      var a = getA();
+      if (a.state === 'suspended') void a.resume().catch(function () {});
+    } catch (e) {}
   }
+
+  function resumeA() {
+    primeAudioFromGesture();
+  }
+
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) primeAudioFromGesture();
+  });
+
+  function runWhenAudioReady(fn) {
+    if (!soundOn) return;
+    var a = getA();
+    function run() {
+      try { fn(a); } catch (e) {}
+    }
+    if (a.state === 'running') run();
+    else {
+      a.resume().then(run).catch(run);
+    }
+  }
+
+  function beepAt(a, freq, type, dur, vol, t0) {
+    var t = t0 != null ? t0 : a.currentTime;
+    var o = a.createOscillator();
+    var g = a.createGain();
+    o.type = type || 'sine';
+    o.frequency.setValueAtTime(freq, t);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(vol, t + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(g);
+    g.connect(a.destination);
+    o.start(t);
+    o.stop(t + dur + 0.02);
+  }
+
   function beep(freq, type, dur, vol, t0) {
     if (!soundOn) return;
-    var a = getA();
-    resumeA();
-    var t = t0 != null ? t0 : a.currentTime;
-    try {
-      var o = a.createOscillator();
-      var g = a.createGain();
-      o.type = type || 'sine';
-      o.frequency.setValueAtTime(freq, t);
-      g.gain.setValueAtTime(0, t);
-      g.gain.linearRampToValueAtTime(vol, t + 0.004);
-      g.gain.exponentialRampToValueAtTime(0.001, t + dur);
-      o.connect(g);
-      g.connect(a.destination);
-      o.start(t);
-      o.stop(t + dur + 0.02);
-    } catch (e) {}
+    runWhenAudioReady(function (a) { beepAt(a, freq, type, dur, vol, t0); });
   }
+
+  function noiseBurstAt(a, dur, vol) {
+    var sr = a.sampleRate;
+    var n = Math.floor(sr * dur);
+    var buf = a.createBuffer(1, n, sr);
+    var d = buf.getChannelData(0);
+    for (var i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * vol * Math.exp(-i / n * 3);
+    var src = a.createBufferSource();
+    src.buffer = buf;
+    var f = a.createBiquadFilter();
+    f.type = 'lowpass';
+    f.frequency.value = 900;
+    var g = a.createGain();
+    g.gain.value = 0.9;
+    src.connect(f);
+    f.connect(g);
+    g.connect(a.destination);
+    src.start();
+  }
+
   function noiseBurst(dur, vol) {
     if (!soundOn) return;
-    var a = getA();
-    resumeA();
-    try {
-      var sr = a.sampleRate;
-      var n = Math.floor(sr * dur);
-      var buf = a.createBuffer(1, n, sr);
-      var d = buf.getChannelData(0);
-      for (var i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * vol * Math.exp(-i / n * 3);
-      var src = a.createBufferSource();
-      src.buffer = buf;
-      var f = a.createBiquadFilter();
-      f.type = 'lowpass';
-      f.frequency.value = 900;
-      var g = a.createGain();
-      g.gain.value = 0.9;
-      src.connect(f);
-      f.connect(g);
-      g.connect(a.destination);
-      src.start();
-    } catch (e) {}
+    runWhenAudioReady(function (a) { noiseBurstAt(a, dur, vol); });
   }
   function sndPaddle(zone) {
     beep(320 + zone * 35, 'square', 0.06, 0.08);
@@ -495,62 +523,90 @@
     beep(180 + left * 60, 'triangle', 0.08, 0.1);
   }
   function sndBrickBreak() {
-    beep(660, 'square', 0.06, 0.12);
-    beep(440, 'sine', 0.1, 0.05, getA().currentTime + 0.04);
+    if (!soundOn) return;
+    runWhenAudioReady(function (a) {
+      var t = a.currentTime;
+      beepAt(a, 660, 'square', 0.06, 0.12, t);
+      beepAt(a, 440, 'sine', 0.1, 0.05, t + 0.04);
+    });
   }
   function sndPuFall() {}
   function sndPuCatch() {
-    var a = getA();
-    resumeA();
-    var t = a.currentTime;
-    beep(523, 'sine', 0.08, 0.1, t);
-    beep(784, 'sine', 0.1, 0.1, t + 0.07);
+    if (!soundOn) return;
+    runWhenAudioReady(function (a) {
+      var t = a.currentTime;
+      beepAt(a, 523, 'sine', 0.08, 0.1, t);
+      beepAt(a, 784, 'sine', 0.1, 0.1, t + 0.07);
+    });
   }
   function sndLifeGain() {
-    var a = getA();
-    resumeA();
-    var t = a.currentTime;
-    beep(440, 'sine', 0.12, 0.12, t);
-    beep(554, 'sine', 0.15, 0.12, t + 0.1);
+    if (!soundOn) return;
+    runWhenAudioReady(function (a) {
+      var t = a.currentTime;
+      beepAt(a, 440, 'sine', 0.12, 0.12, t);
+      beepAt(a, 554, 'sine', 0.15, 0.12, t + 0.1);
+    });
   }
   function sndLifeLost() {
     beep(120, 'sawtooth', 0.25, 0.14);
   }
   function sndGoalHit() {
-    beep(880, 'square', 0.12, 0.1);
-    beep(1100, 'square', 0.1, 0.08, getA().currentTime + 0.08);
+    if (!soundOn) return;
+    runWhenAudioReady(function (a) {
+      var t = a.currentTime;
+      beepAt(a, 880, 'square', 0.12, 0.1, t);
+      beepAt(a, 1100, 'square', 0.1, 0.08, t + 0.08);
+    });
   }
   function sndComplete() {
-    var a = getA();
-    resumeA();
-    var t = a.currentTime;
-    [523, 659, 784, 1046].forEach(function (f, i) {
-      beep(f, 'sine', 0.35, 0.1, t + i * 0.12);
+    if (!soundOn) return;
+    runWhenAudioReady(function (a) {
+      var t = a.currentTime;
+      [523, 659, 784, 1046].forEach(function (f, i) {
+        beepAt(a, f, 'sine', 0.35, 0.1, t + i * 0.12);
+      });
     });
   }
   function sndFault() {
-    noiseBurst(0.4, 0.25);
-    beep(80, 'sine', 0.5, 0.2);
+    if (!soundOn) return;
+    runWhenAudioReady(function (a) {
+      var t = a.currentTime;
+      noiseBurstAt(a, 0.4, 0.25);
+      beepAt(a, 80, 'sine', 0.5, 0.2, t);
+    });
   }
   function sndVortexImplode() {
-    beep(200, 'sine', 0.4, 0.15);
-    noiseBurst(0.35, 0.2);
+    if (!soundOn) return;
+    runWhenAudioReady(function (a) {
+      var t = a.currentTime;
+      beepAt(a, 200, 'sine', 0.4, 0.15, t);
+      noiseBurstAt(a, 0.35, 0.2);
+    });
   }
   function sndCoreBoom() {
-    beep(90, 'sine', 0.45, 0.22);
-    beep(220, 'sine', 0.3, 0.1, getA().currentTime + 0.05);
+    if (!soundOn) return;
+    runWhenAudioReady(function (a) {
+      var t = a.currentTime;
+      beepAt(a, 90, 'sine', 0.45, 0.22, t);
+      beepAt(a, 220, 'sine', 0.3, 0.1, t + 0.05);
+    });
   }
   function sndSignal() {
-    var a = getA();
-    resumeA();
-    var t = a.currentTime;
-    beep(990, 'square', 0.06, 0.08, t);
-    beep(990, 'square', 0.06, 0.08, t + 0.1);
-    beep(990, 'square', 0.06, 0.08, t + 0.2);
+    if (!soundOn) return;
+    runWhenAudioReady(function (a) {
+      var t = a.currentTime;
+      beepAt(a, 990, 'square', 0.06, 0.08, t);
+      beepAt(a, 990, 'square', 0.06, 0.08, t + 0.1);
+      beepAt(a, 990, 'square', 0.06, 0.08, t + 0.2);
+    });
   }
   function sndBallLost() {
-    beep(300, 'triangle', 0.15, 0.1);
-    beep(150, 'triangle', 0.2, 0.08, getA().currentTime + 0.06);
+    if (!soundOn) return;
+    runWhenAudioReady(function (a) {
+      var t = a.currentTime;
+      beepAt(a, 300, 'triangle', 0.15, 0.1, t);
+      beepAt(a, 150, 'triangle', 0.2, 0.08, t + 0.06);
+    });
   }
 
   btnMute.addEventListener('click', function () {
@@ -558,7 +614,8 @@
     localStorage.setItem('vektor-breach-sound', soundOn ? '1' : '0');
     btnMute.setAttribute('aria-pressed', soundOn ? 'false' : 'true');
     btnMute.textContent = soundOn ? 'Sound' : 'Muted';
-    resumeA();
+    primeAudioFromGesture();
+    if (soundOn) beep(523, 'sine', 0.06, 0.06);
   });
   btnMute.textContent = soundOn ? 'Sound' : 'Muted';
 
@@ -1377,18 +1434,25 @@
     b.type = 'button';
     b.className = 'pill';
     b.textContent = s.id;
-    b.addEventListener('click', function () { schemeIndex = i; syncPills(); });
+    b.addEventListener('click', function () {
+      primeAudioFromGesture();
+      schemeIndex = i;
+      syncPills();
+    });
     pillsEl.appendChild(b);
   });
   document.getElementById('pillPrev').addEventListener('click', function () {
+    primeAudioFromGesture();
     schemeIndex = (schemeIndex + SCHEMES.length - 1) % SCHEMES.length;
     syncPills();
   });
   document.getElementById('pillNext').addEventListener('click', function () {
+    primeAudioFromGesture();
     schemeIndex = (schemeIndex + 1) % SCHEMES.length;
     syncPills();
   });
   pillMobiName.addEventListener('click', function () {
+    primeAudioFromGesture();
     schemeIndex = (schemeIndex + 1) % SCHEMES.length;
     syncPills();
   });
@@ -1442,8 +1506,20 @@
     btnL.style.background = 'rgba(107,92,62,0.12)';
     btnPause.style.background = 'rgba(107,92,62,0.12)';
     btnR.style.background = 'rgba(107,92,62,0.12)';
-    btnPause.textContent = gameState === STATE.PAUSED ? 'Resume' : 'Pause';
-    btnPause.setAttribute('aria-label', gameState === STATE.PAUSED ? 'Resume' : 'Pause');
+    var pauseLabel = 'Pause';
+    var pauseAria = 'Pause';
+    if (gameState === STATE.PAUSED) {
+      pauseLabel = 'Resume';
+      pauseAria = 'Resume';
+    } else if (gameState === STATE.PLAYING) {
+      var ballOnPaddle = balls.some(function (b) { return b.onPaddle; });
+      if (ballOnPaddle) {
+        pauseLabel = 'Start';
+        pauseAria = 'Launch ball';
+      }
+    }
+    btnPause.textContent = pauseLabel;
+    btnPause.setAttribute('aria-label', pauseAria);
 
     if (flashLife > 0) flashLife--;
     if (streakShow > 0) streakShow--;
@@ -1841,17 +1917,36 @@
     paddleX = tx;
   }, { passive: true });
 
-  btnL.addEventListener('touchstart', function (e) { e.preventDefault(); keys.left = true; }, { passive: false });
+  btnL.addEventListener('touchstart', function (e) {
+    primeAudioFromGesture();
+    e.preventDefault();
+    keys.left = true;
+  }, { passive: false });
   btnL.addEventListener('touchend', function () { keys.left = false; });
   btnL.addEventListener('touchcancel', function () { keys.left = false; });
-  btnR.addEventListener('touchstart', function (e) { e.preventDefault(); keys.right = true; }, { passive: false });
+  btnR.addEventListener('touchstart', function (e) {
+    primeAudioFromGesture();
+    e.preventDefault();
+    keys.right = true;
+  }, { passive: false });
   btnR.addEventListener('touchend', function () { keys.right = false; });
   btnR.addEventListener('touchcancel', function () { keys.right = false; });
 
   btnPause.addEventListener('click', function (e) {
     e.preventDefault();
-    resumeA();
-    togglePauseFromControls();
+    primeAudioFromGesture();
+    if (gameState === STATE.PAUSED) {
+      togglePauseFromControls();
+      return;
+    }
+    if (gameState === STATE.PLAYING) {
+      var waiting = balls.some(function (b) { return b.onPaddle; });
+      if (waiting) {
+        balls.forEach(function (b) { if (b.onPaddle) launchBall(b); });
+        return;
+      }
+      togglePauseFromControls();
+    }
   });
 
   orientWarn.addEventListener('click', function () {
