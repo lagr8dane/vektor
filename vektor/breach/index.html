@@ -147,18 +147,35 @@
       display: none;
       width: 100%;
       max-width: min(96vw, 920px);
-      height: 40px;
+      min-height: 56px;
+      height: 56px;
       margin-top: 0;
       border-top: 1px solid #2a2318;
     }
     .touch-strip.show { display: flex; }
     .touch-strip button {
-      flex: 1;
       border: none;
       background: rgba(107,92,62,0.15);
       color: #6b5c3e;
-      font-size: 18px;
       letter-spacing: 0.1em;
+    }
+    .touch-strip .touch-dir {
+      flex: 1 1 0;
+      min-width: 0;
+      min-height: 56px;
+      font-size: 30px;
+      line-height: 1;
+      padding: 0 8px;
+    }
+    .touch-strip .touch-pause {
+      flex: 0 0 72px;
+      min-height: 56px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      border-left: 1px solid rgba(42,35,24,0.55);
+      border-right: 1px solid rgba(42,35,24,0.55);
     }
     .touch-strip button:active { background: rgba(200,169,110,0.2); color: #c8a96e; }
     body.touch-layout .touch-strip.show { display: flex; }
@@ -182,8 +199,9 @@
     <canvas id="gameCanvas" width="800" height="600"></canvas>
   </div>
   <div class="touch-strip" id="touchStrip">
-    <button type="button" id="btnL" aria-label="Left">◀</button>
-    <button type="button" id="btnR" aria-label="Right">▶</button>
+    <button type="button" class="touch-dir" id="btnL" aria-label="Left">◀</button>
+    <button type="button" class="touch-pause" id="btnPause" aria-label="Pause">Pause</button>
+    <button type="button" class="touch-dir" id="btnR" aria-label="Right">▶</button>
   </div>
   <div class="orient-overlay" id="orientWarn"><span id="orientText">ROTATE FOR BEST EXPERIENCE</span></div>
 
@@ -237,6 +255,7 @@
   var btnMute = document.getElementById('btnMute');
   var touchStrip = document.getElementById('touchStrip');
   var btnL = document.getElementById('btnL');
+  var btnPause = document.getElementById('btnPause');
   var btnR = document.getElementById('btnR');
   var orientWarn = document.getElementById('orientWarn');
   var orientText = document.getElementById('orientText');
@@ -1375,9 +1394,13 @@
     updateTopBar();
     syncPills();
     btnL.style.color = col.muted;
+    btnPause.style.color = col.muted;
     btnR.style.color = col.muted;
     btnL.style.background = 'rgba(107,92,62,0.12)';
+    btnPause.style.background = 'rgba(107,92,62,0.12)';
     btnR.style.background = 'rgba(107,92,62,0.12)';
+    btnPause.textContent = gameState === STATE.PAUSED ? 'Resume' : 'Pause';
+    btnPause.setAttribute('aria-label', gameState === STATE.PAUSED ? 'Resume' : 'Pause');
 
     if (flashLife > 0) flashLife--;
     if (streakShow > 0) streakShow--;
@@ -1702,8 +1725,7 @@
       return;
     }
     if (e.code === 'KeyP') {
-      if (gameState === STATE.PLAYING) gameState = STATE.PAUSED;
-      else if (gameState === STATE.PAUSED) gameState = STATE.PLAYING;
+      togglePauseFromControls();
       return;
     }
     if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = true;
@@ -1719,6 +1741,11 @@
   });
 
   var suppressCanvasClickUntil = 0;
+
+  function togglePauseFromControls() {
+    if (gameState === STATE.PLAYING) gameState = STATE.PAUSED;
+    else if (gameState === STATE.PAUSED) gameState = STATE.PLAYING;
+  }
 
   function canvasPrimaryAction() {
     if (gameState === STATE.TITLE) {
@@ -1772,8 +1799,16 @@
 
   btnL.addEventListener('touchstart', function (e) { e.preventDefault(); keys.left = true; }, { passive: false });
   btnL.addEventListener('touchend', function () { keys.left = false; });
+  btnL.addEventListener('touchcancel', function () { keys.left = false; });
   btnR.addEventListener('touchstart', function (e) { e.preventDefault(); keys.right = true; }, { passive: false });
   btnR.addEventListener('touchend', function () { keys.right = false; });
+  btnR.addEventListener('touchcancel', function () { keys.right = false; });
+
+  btnPause.addEventListener('click', function (e) {
+    e.preventDefault();
+    resumeA();
+    togglePauseFromControls();
+  });
 
   orientWarn.addEventListener('click', function () {
     orientWarn.classList.remove('on');
