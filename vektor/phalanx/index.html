@@ -134,6 +134,10 @@ var STUN_FR = 20;
 var DIVE_FR = 30;
 var DIVE_SPD = 5;
 var GK_TRACK = 0.08;
+var HUMAN_GK_IDX = 0;
+var DEF_THREAT_FRAC = 0.64;
+var LOOSE_THREAT_FRAC = 0.68;
+var THREAT_OUTFIELD_PX = 46;
 var TRAIL_LEN = 12;
 var MULT_FR = 600;
 var TARGET_W = 8, TARGET_H = 24;
@@ -386,12 +390,14 @@ function cy() { return field.y + field.h / 2; }
 
 // ═══ PLAYERS / BALL INIT ═══════════════════════════════════════════
 function makePlayer(team, role, id) {
+  var defFace = team === 'human' ? -Math.PI / 2 : Math.PI / 2;
   return {
     team: team,
     role: role,
     id: id,
     x: 0, y: 0,
     vx: 0, vy: 0,
+    faceAng: defFace,
     hasBall: false,
     stun: 0,
     diving: false,
@@ -437,10 +443,60 @@ function carrier() {
   return null;
 }
 
+function attackGoalCenter(team) {
+  var gx = cx();
+  if (team === 'human') return { x: gx, y: field.y + GOAL_D * 0.5 };
+  return { x: gx, y: field.y + field.h - GOAL_D * 0.5 };
+}
+
+function snapCarrierFaceToGoal(p) {
+  var g = attackGoalCenter(p.team);
+  p.faceAng = Math.atan2(g.y - p.y, g.x - p.x);
+}
+
+function tickCarrierFacing(p) {
+  if (!p || !p.hasBall) return;
+  var g = attackGoalCenter(p.team);
+  var target = Math.atan2(g.y - p.y, g.x - p.x);
+  var cur = p.faceAng;
+  var diff = target - cur;
+  while (diff > Math.PI) diff -= Math.PI * 2;
+  while (diff < -Math.PI) diff += Math.PI * 2;
+  p.faceAng = cur + diff * 0.32;
+}
+
+function humanDefensiveThreat() {
+  var fy = field.y, fh = field.h;
+  var c = carrier();
+  if (c && c.team === 'cpu' && c.role !== 0 && c.y > fy + fh * DEF_THREAT_FRAC) return true;
+  if (ball.loose && ball.y > fy + fh * LOOSE_THREAT_FRAC) return true;
+  return false;
+}
+
+function closestHumanOutfieldToBall() {
+  var best = -1, bd = 1e9;
+  for (var i = 0; i < players.length; i++) {
+    var p = players[i];
+    if (p.team !== 'human' || p.role === 0) continue;
+    var d = Math.hypot(p.x - ball.x, p.y - ball.y);
+    if (d < bd) { bd = d; best = i; }
+  }
+  return { idx: best, d: bd };
+}
+
 function updateActiveHuman() {
   var c = carrier();
   if (c && c.team === 'human') {
     activeHumanIdx = players.indexOf(c);
+    return;
+  }
+  if (humanDefensiveThreat()) {
+    var near = closestHumanOutfieldToBall();
+    if (ball.loose && near.idx >= 0 && near.d < THREAT_OUTFIELD_PX) {
+      activeHumanIdx = near.idx;
+      return;
+    }
+    activeHumanIdx = HUMAN_GK_IDX;
     return;
   }
   var best = -1, bd = 1e9;
@@ -458,7 +514,7 @@ function shootFrom(p, spd) {
   if (Math.abs(p.vx) + Math.abs(p.vy) > 0.1) {
     ang = Math.atan2(p.vy, p.vx);
   } else {
-    ang = -Math.PI / 2;
+    ang = p.faceAng != null ? p.faceAng : (p.team === 'cpu' ? Math.PI / 2 : -Math.PI / 2);
   }
   ball.x = p.x + Math.cos(ang) * (PR + BALL_R + 4);
   ball.y = p.y + Math.sin(ang) * (PR + BALL_R + 4);
@@ -572,6 +628,7 @@ function tryPossession() {
     if (rnd() < ch) {
       players.forEach(function (q) { q.hasBall = false; });
       p.hasBall = true;
+      snapCarrierFaceToGoal(p);
       ball.loose = false;
       ball.vx = ball.vy = 0;
       sndCatch();
@@ -606,6 +663,7 @@ function tryTackle() {
       car.hasBall = false;
       car.stun = STUN_FR;
       t.hasBall = true;
+      snapCarrierFaceToGoal(t);
       ball.loose = false;
       ball.vx = ball.vy = 0;
       sndTackleOk();
@@ -714,9 +772,11 @@ function checkMultZones() {
 function moveBall() {
   var car = carrier();
   if (car) {
-    var ang = Math.atan2(car.vy, car.vx);
+    var ang;
     if (Math.abs(car.vx) + Math.abs(car.vy) < 0.05) {
-      ang = car.team === 'cpu' ? Math.PI / 2 : -Math.PI / 2;
+      ang = car.faceAng != null ? car.faceAng : (car.team === 'cpu' ? Math.PI / 2 : -Math.PI / 2);
+    } else {
+      ang = Math.atan2(car.vy, car.vx);
     }
     ball.x = car.x + Math.cos(ang) * 12;
     ball.y = car.y + Math.sin(ang) * 12;
@@ -868,7 +928,7 @@ function cpuField(p) {
 function shootCpu(p) {
   if (!p.hasBall) return;
   p.hasBall = false;
-  var ang = Math.atan2(field.y + field.h - p.y, gx() - p.x);
+  var ang = Math.atan2(field.y + field.h - p.y, cx() - p.x);
   ball.x = p.x + Math.cos(ang) * (PR + BALL_R + 4);
   ball.y = p.y + Math.sin(ang) * (PR + BALL_R + 4);
   ball.vx = Math.cos(ang) * SHOOT_SPD;
@@ -967,6 +1027,38 @@ function moveHumanToward(p, tx, ty, spd) {
   clampPlayer(p);
 }
 
+function teammateLooseBallTarget(p, activeP) {
+  var bx = ball.x, by = ball.y;
+  var ax = activeP.x, ay = activeP.y;
+  var vx = bx - ax, vy = by - ay;
+  var L = Math.hypot(vx, vy) || 1;
+  if (L < 12) {
+    var ang = (p.id - 2) * 1.05 + 0.55 * Math.PI;
+    return { x: bx + Math.cos(ang) * 62, y: by + Math.sin(ang) * 50 };
+  }
+  vx /= L;
+  vy /= L;
+  var px = -vy, py = vx;
+  var side = p.role === 2 ? 1 : -1;
+  var lane = 54;
+  var along = 28 * (p.id - 2);
+  return { x: bx + px * lane * side + vx * along, y: by + py * lane * side * 0.88 + vy * along };
+}
+
+function teammatePressCpuTarget(p, cpuCar, activeP) {
+  var bx = cpuCar.x, by = cpuCar.y;
+  var ax = activeP.x, ay = activeP.y;
+  var vx = bx - ax, vy = by - ay;
+  var L = Math.hypot(vx, vy) || 1;
+  vx /= L;
+  vy /= L;
+  var px = -vy, py = vx;
+  var side = p.role === 2 ? 1 : -1;
+  var lane = 56;
+  var tuck = -20;
+  return { x: bx + px * lane * side + vx * tuck, y: by + py * lane * side + vy * tuck };
+}
+
 function humanGkTeammateAI(p) {
   var g = goalRects().player;
   var gl = g.x + 10, gr = g.x + GOAL_W - 10;
@@ -978,6 +1070,8 @@ function humanGkTeammateAI(p) {
 }
 
 function updateHumanTeammates() {
+  var activeP = players[activeHumanIdx];
+  if (!activeP || activeP.team !== 'human') activeP = players[HUMAN_GK_IDX];
   for (var i = 0; i < players.length; i++) {
     var p = players[i];
     if (p.team !== 'human' || i === activeHumanIdx) continue;
@@ -1000,19 +1094,19 @@ function updateHumanTeammates() {
       continue;
     }
     if (car && car.team === 'human' && car !== p) {
-      var tx = car.x + (p.role === 2 ? 32 : -24);
-      var ty = car.y + (p.role === 2 ? -32 : 18);
+      var tx = car.x + (p.role === 2 ? 44 : -38);
+      var ty = car.y + (p.role === 2 ? -40 : 26);
       moveHumanToward(p, tx, ty, spd);
       continue;
     }
     if (ball.loose) {
-      var ox = (p.id - 2) * 20;
-      var oy = p.role === 1 ? 14 : -10;
-      moveHumanToward(p, ball.x + ox, ball.y + oy, spd);
+      var lt = teammateLooseBallTarget(p, activeP);
+      moveHumanToward(p, lt.x, lt.y, spd * 0.92);
       continue;
     }
     if (car && car.team === 'cpu') {
-      moveHumanToward(p, ball.x, ball.y, spd * 1.05);
+      var pt = teammatePressCpuTarget(p, car, activeP);
+      moveHumanToward(p, pt.x, pt.y, spd * 0.98);
       continue;
     }
     moveHumanToward(p, cx(), field.y + field.h * 0.52, spd * 0.45);
@@ -1106,6 +1200,34 @@ function drawPitch(col) {
   ctx.arcTo(fx, fy, fx + fw, fy, r);
   ctx.closePath();
   ctx.stroke();
+  ctx.strokeStyle = col.primary;
+  ctx.globalAlpha = 0.38;
+  ctx.lineWidth = 1.15;
+  ctx.setLineDash([5, 6]);
+  var yThird1 = fy + fh / 3;
+  var yThird2 = fy + (fh * 2) / 3;
+  var xThird1 = fx + fw / 3;
+  var xThird2 = fx + (fw * 2) / 3;
+  ctx.beginPath();
+  ctx.moveTo(fx, yThird1);
+  ctx.lineTo(fx + fw, yThird1);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(fx, yThird2);
+  ctx.lineTo(fx + fw, yThird2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(xThird1, fy);
+  ctx.lineTo(xThird1, fy + fh);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(xThird2, fy);
+  ctx.lineTo(xThird2, fy + fh);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = col.muted;
+  ctx.lineWidth = 0.85;
   ctx.beginPath();
   ctx.arc(cx(), cy(), 50, 0, Math.PI * 2);
   ctx.stroke();
@@ -1190,8 +1312,15 @@ function drawPowerups(col, now) {
 }
 
 function drawPlayers(col) {
-  players.forEach(function (p) {
+  players.forEach(function (p, idx) {
     var isHum = p.team === 'human';
+    if (idx === activeHumanIdx && isHum) {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, PR + 6, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(230, 55, 55, 0.95)';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+    }
     ctx.beginPath();
     ctx.arc(p.x, p.y, PR, 0, Math.PI * 2);
     if (isHum) {
@@ -1203,20 +1332,25 @@ function drawPlayers(col) {
       ctx.stroke();
     }
     if (p.hasBall) {
+      var fa = p.faceAng != null ? p.faceAng : (isHum ? -Math.PI / 2 : Math.PI / 2);
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(fa);
+      ctx.beginPath();
+      ctx.moveTo(PR + 5, 0);
+      ctx.lineTo(2, -4);
+      ctx.lineTo(2, 4);
+      ctx.closePath();
+      ctx.fillStyle = col.primary;
+      ctx.globalAlpha = isHum ? 0.9 : 0.75;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.restore();
       ctx.beginPath();
       ctx.arc(p.x, p.y, 13, 0, Math.PI * 2);
       ctx.strokeStyle = col.primary;
       ctx.lineWidth = 1;
       ctx.stroke();
-    }
-    if (players.indexOf(p) === activeHumanIdx && p.team === 'human') {
-      ctx.setLineDash([3, 3]);
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, 17, 0, Math.PI * 2);
-      ctx.strokeStyle = col.muted;
-      ctx.lineWidth = 0.5;
-      ctx.stroke();
-      ctx.setLineDash([]);
     }
     ctx.fillStyle = col.muted;
     ctx.font = '8px monospace';
@@ -1547,6 +1681,8 @@ function tickPlay() {
   updateHumanTeammates();
   updateCpu();
   separatePlayers();
+  var drib = carrier();
+  if (drib) tickCarrierFacing(drib);
   moveBall();
   tryPossession();
   playerDeflect();
