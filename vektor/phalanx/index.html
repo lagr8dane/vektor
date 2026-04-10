@@ -238,6 +238,21 @@ function ballSpeedLevelBonus() {
   return Math.min(1.5, (agentMemory.matchCount || 0) * 0.15);
 }
 
+var PRACTICE_LOOSE_BALL_MUL = 2.2;
+var PRACTICE_SHOOT_MUL = 1.85;
+
+function effectiveLooseBallSpeed() {
+  return (BALL_BASE_SPD + ballSpeedLevelBonus()) * (practiceMode ? PRACTICE_LOOSE_BALL_MUL : 1);
+}
+
+function baseShootSpd() {
+  return SHOOT_SPD * (practiceMode ? PRACTICE_SHOOT_MUL : 1);
+}
+
+function boostShootSpd() {
+  return BOOST_SHOOT * (practiceMode ? PRACTICE_SHOOT_MUL : 1);
+}
+
 // ═══ AGENT ═════════════════════════════════════════════════════════
 function buildGameState(moment) {
   return {
@@ -408,20 +423,31 @@ function makePlayer(team, role, id) {
 function resetPositions(kickoff) {
   var mx = cx();
   var fy = field.y, fh = field.h;
-  players = [
-    makePlayer('human', 0, 1),
-    makePlayer('human', 1, 2),
-    makePlayer('human', 2, 3),
-    makePlayer('cpu', 0, 1),
-    makePlayer('cpu', 1, 2),
-    makePlayer('cpu', 2, 3)
-  ];
-  players[0].x = mx; players[0].y = fy + fh - GOAL_D - PR - 18;
-  players[1].x = mx - 50; players[1].y = fy + fh * 0.55;
-  players[2].x = mx + 40; players[2].y = fy + fh * 0.35;
-  players[3].x = mx; players[3].y = fy + GOAL_D + PR + 18;
-  players[4].x = mx + 45; players[4].y = fy + fh * 0.45;
-  players[5].x = mx - 35; players[5].y = fy + fh * 0.28;
+  if (practiceMode) {
+    players = [
+      makePlayer('human', 0, 1),
+      makePlayer('human', 1, 2),
+      makePlayer('human', 2, 3)
+    ];
+    players[0].x = mx; players[0].y = fy + fh - GOAL_D - PR - 18;
+    players[1].x = mx - 50; players[1].y = fy + fh * 0.55;
+    players[2].x = mx + 40; players[2].y = fy + fh * 0.35;
+  } else {
+    players = [
+      makePlayer('human', 0, 1),
+      makePlayer('human', 1, 2),
+      makePlayer('human', 2, 3),
+      makePlayer('cpu', 0, 1),
+      makePlayer('cpu', 1, 2),
+      makePlayer('cpu', 2, 3)
+    ];
+    players[0].x = mx; players[0].y = fy + fh - GOAL_D - PR - 18;
+    players[1].x = mx - 50; players[1].y = fy + fh * 0.55;
+    players[2].x = mx + 40; players[2].y = fy + fh * 0.35;
+    players[3].x = mx; players[3].y = fy + GOAL_D + PR + 18;
+    players[4].x = mx + 45; players[4].y = fy + fh * 0.45;
+    players[5].x = mx - 35; players[5].y = fy + fh * 0.28;
+  }
   ball.x = mx;
   ball.y = cy();
   ball.vx = ball.vy = 0;
@@ -466,6 +492,7 @@ function tickCarrierFacing(p) {
 }
 
 function humanDefensiveThreat() {
+  if (practiceMode) return false;
   var fy = field.y, fh = field.h;
   var c = carrier();
   if (c && c.team === 'cpu' && c.role !== 0 && c.y > fy + fh * DEF_THREAT_FRAC) return true;
@@ -526,8 +553,8 @@ function shootFrom(p, spd) {
 
 function tryShoot() {
   var eff = effectState();
-  var spd = SHOOT_SPD;
-  if (eff.boostShot) spd = BOOST_SHOOT;
+  var spd = baseShootSpd();
+  if (eff.boostShot) spd = boostShootSpd();
   var p = players[activeHumanIdx];
   if (p && p.team === 'human' && p.hasBall) {
     if (eff.boostShot) {
@@ -634,7 +661,7 @@ function tryPossession() {
       sndCatch();
     } else {
       var ang = rnd() * Math.PI * 2;
-      var sp = BALL_BASE_SPD + ballSpeedLevelBonus();
+      var sp = effectiveLooseBallSpeed();
       ball.vx = Math.cos(ang) * sp;
       ball.vy = Math.sin(ang) * sp;
       ball.loose = true;
@@ -674,7 +701,7 @@ function tryTackle() {
       car.stun = STUN_FR;
       t.stun = Math.floor(STUN_FR * 0.6);
       var ang = rnd() * Math.PI * 2;
-      var sp = BALL_BASE_SPD + ballSpeedLevelBonus();
+      var sp = effectiveLooseBallSpeed();
       ball.vx = Math.cos(ang) * sp;
       ball.vy = Math.sin(ang) * sp;
       ball.loose = true;
@@ -711,6 +738,10 @@ function checkGoal() {
     return;
   }
   if (ball.x > g.player.x && ball.x < g.player.x + g.player.w && ball.y > field.y + field.h - GOAL_D - BALL_R && ball.vy > 0) {
+    if (practiceMode) {
+      resetAfterGoal();
+      return;
+    }
     score.c += 10;
     goalLog.push({ scorer: 'cpu', method: 'counter', time: Math.floor(elapsedHalf / 1000) });
     goalFlash = 40;
@@ -738,7 +769,7 @@ function checkWallTargets() {
       sndTarget();
       burst(t.x + TARGET_W / 2, t.y + TARGET_H / 2, 10, scheme().primary);
       var ang = rnd() * Math.PI * 2;
-      var sp = BALL_BASE_SPD + ballSpeedLevelBonus();
+      var sp = effectiveLooseBallSpeed();
       ball.vx = Math.cos(ang) * sp;
       ball.vy = Math.sin(ang) * sp;
     }
@@ -782,7 +813,7 @@ function moveBall() {
     ball.y = car.y + Math.sin(ang) * 12;
     return;
   }
-  var spd = BALL_BASE_SPD + ballSpeedLevelBonus();
+  var spd = effectiveLooseBallSpeed();
   var mag = Math.hypot(ball.vx, ball.vy) || spd;
   if (mag > 0.01) {
     ball.vx = ball.vx / mag * spd;
@@ -821,7 +852,7 @@ function moveBall() {
 function jitterBounce() {
   var j = (rnd() - 0.5) * 0.17;
   var a = Math.atan2(ball.vy, ball.vx) + j;
-  var m = Math.hypot(ball.vx, ball.vy) || BALL_BASE_SPD;
+  var m = Math.hypot(ball.vx, ball.vy) || effectiveLooseBallSpeed();
   ball.vx = Math.cos(a) * m;
   ball.vy = Math.sin(a) * m;
 }
@@ -931,8 +962,8 @@ function shootCpu(p) {
   var ang = Math.atan2(field.y + field.h - p.y, cx() - p.x);
   ball.x = p.x + Math.cos(ang) * (PR + BALL_R + 4);
   ball.y = p.y + Math.sin(ang) * (PR + BALL_R + 4);
-  ball.vx = Math.cos(ang) * SHOOT_SPD;
-  ball.vy = Math.sin(ang) * SHOOT_SPD;
+  ball.vx = Math.cos(ang) * baseShootSpd();
+  ball.vy = Math.sin(ang) * baseShootSpd();
   ball.loose = true;
   sndShot();
 }
@@ -953,6 +984,7 @@ function cpuTryPass(p) {
 }
 
 function updateCpu() {
+  if (practiceMode) return;
   cpuTeam().forEach(function (p) {
     if (p.stun > 0) { p.stun--; return; }
     if (p.role === 0) cpuGoalie(p, true);
@@ -1087,7 +1119,7 @@ function updateHumanTeammates() {
     }
     if (p.hasBall) {
       if (p.y < field.y + field.h * 0.36 && rnd() < 0.018) {
-        shootFrom(p, SHOOT_SPD);
+        shootFrom(p, baseShootSpd());
         continue;
       }
       moveHumanToward(p, cx(), field.y + GOAL_D + 50, 2.35);
@@ -1384,11 +1416,11 @@ function drawTopBar(col) {
   ctx.fillRect(0, 0, W, TOP_UI);
   ctx.fillStyle = col.primary;
   ctx.font = '11px monospace';
-  ctx.fillText('P ' + score.p + '  —  ' + score.c + ' CPU', 8, 20);
+  ctx.fillText(practiceMode ? 'PRACTICE · YOUR XI' : 'P ' + score.p + '  —  ' + score.c + ' CPU', 8, 20);
   ctx.textAlign = 'center';
   if (practiceMode) {
     ctx.fillStyle = col.muted;
-    ctx.fillText('PRACTICE', W / 2, 20);
+    ctx.fillText('SOLO DRILL', W / 2, 20);
   } else {
     var halfStr = half === 1 ? '1ST' : '2ND';
     var rem = Math.max(0, HALF_MS - elapsedHalf);
@@ -1421,7 +1453,7 @@ function drawBottomBar(col, playUi) {
       if (e.type === PU.SPEED) txt += '»' + left + 's ';
       if (e.type === PU.FREEZE) txt += '*' + left + 's ';
     });
-    if (practiceMode) txt = (txt ? txt + ' · ' : '') + 'AI teammates · ESC title';
+    if (practiceMode) txt = (txt ? txt + ' · ' : '') + '3v0 · fast ball · ESC title';
     ctx.fillText(txt, 6, H - 12);
   }
   var msg = (gameState === STATE.FIRST_HALF || gameState === STATE.SECOND_HALF) ? '' : agentMsg;
@@ -1471,7 +1503,7 @@ function drawTitle() {
   ctx.fillStyle = col.primary;
   ctx.fillText('[SPACE] MATCH  ·  halves & agent', W / 2, H / 2 + 24);
   ctx.fillStyle = col.muted;
-  ctx.fillText('[Y] PRACTICE  ·  AI teammates, no clock', W / 2, H / 2 + 44);
+  ctx.fillText('[Y] PRACTICE  ·  your XI only, fast ball, no clock', W / 2, H / 2 + 44);
   ctx.textAlign = 'left';
 }
 
@@ -1717,8 +1749,9 @@ function tickKickoff() {
   gameState = half === 2 ? STATE.SECOND_HALF : STATE.FIRST_HALF;
   halfStart = performance.now();
   ball.loose = true;
-  ball.vx = (rnd() - 0.5) * 1.5;
-  ball.vy = (rnd() - 0.5) * 1.5;
+  var kKick = practiceMode ? 2.6 : 1.5;
+  ball.vx = (rnd() - 0.5) * kKick;
+  ball.vy = (rnd() - 0.5) * kKick;
 }
 
 // ═══ LOOP ═════════════════════════════════════════════════════════
