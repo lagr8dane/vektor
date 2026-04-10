@@ -2,411 +2,196 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="description" content="Shall we play a game? AtorGames — arcade and learning games.">
-  <title>AtorGames</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Vektor — AtorGames arcade collection">
+  <title>Vektor — AtorGames</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
-      width: 100%;
       min-height: 100%;
       min-height: 100dvh;
-      background: #000;
-      color: #3f6;
+      background: #0f0d08;
+      color: #c8a96e;
+      font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, monospace;
+      font-size: 13px;
     }
     body {
+      padding: 20px 16px 32px;
+      max-width: 720px;
+      margin: 0 auto;
+    }
+    .top {
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
-      justify-content: center;
-      padding: 16px;
-      font-family: "Share Tech Mono", ui-monospace, monospace;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 28px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #2a2318;
     }
-    #terminal-wrap {
-      width: 100%;
-      max-width: 640px;
-      opacity: 0;
-      transition: opacity 650ms ease;
+    .brand {
+      font-size: 18px;
+      letter-spacing: 0.35em;
+      text-indent: 0.35em;
+      color: var(--primary, #c8a96e);
     }
-    #terminal-wrap.visible { opacity: 1; }
-    .term-chrome {
-      background: linear-gradient(180deg, #2a2a2a 0%, #1a1a1a 100%);
-      border: 1px solid #444;
-      border-radius: 6px 6px 0 0;
-      padding: 8px 12px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      box-shadow: 0 1px 0 rgba(255,255,255,0.06) inset;
-    }
-    .term-dots {
-      display: flex;
-      gap: 6px;
-    }
-    .term-dots span {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: #555;
-    }
-    .term-dots span:nth-child(1) { background: #c44; }
-    .term-dots span:nth-child(2) { background: #ca4; }
-    .term-dots span:nth-child(3) { background: #6c4; }
-    .term-title {
-      flex: 1;
-      text-align: center;
+    .scheme-pill {
+      border: 1px solid var(--border, #2a2318);
+      background: transparent;
+      color: var(--primary, #c8a96e);
+      padding: 6px 12px;
+      font: inherit;
       font-size: 11px;
-      letter-spacing: 0.12em;
-      color: #888;
+      letter-spacing: 0.15em;
+      cursor: pointer;
+      min-height: 36px;
+    }
+    .scheme-pill:active { opacity: 0.85; }
+    .sub {
+      font-size: 10px;
+      letter-spacing: 0.55em;
+      text-indent: 0.55em;
+      color: var(--muted, #6b5c3e);
+      margin-bottom: 24px;
       text-transform: uppercase;
     }
-    .term-screen-outer {
-      border: 1px solid #333;
-      border-top: none;
-      border-radius: 0 0 6px 6px;
-      background: #0a0c0a;
-      box-shadow:
-        0 0 0 1px #000,
-        0 12px 40px rgba(0,0,0,0.65),
-        inset 0 0 80px rgba(0,40,20,0.15);
-    }
-    .term-screen {
-      position: relative;
-      min-height: min(52vh, 420px);
-      padding: 20px 18px 24px;
-      font-size: 14px;
-      line-height: 1.55;
-      color: #33ff66;
-      text-shadow: 0 0 6px rgba(51, 255, 102, 0.35);
-      overflow: hidden;
-    }
-    @media (max-width: 480px) {
-      .term-screen { font-size: 12px; min-height: 48vh; padding: 14px 12px 18px; }
-    }
-    .term-scanlines {
-      pointer-events: none;
-      position: absolute;
-      inset: 0;
-      background: repeating-linear-gradient(
-        to bottom,
-        transparent,
-        transparent 2px,
-        rgba(0, 0, 0, 0.13) 2px,
-        rgba(0, 0, 0, 0.13) 3px
-      );
-      z-index: 2;
-    }
-    .term-vignette {
-      pointer-events: none;
-      position: absolute;
-      inset: 0;
-      box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.5);
-      z-index: 1;
-    }
-    #term-out {
-      position: relative;
-      z-index: 0;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-    .term-line { margin-bottom: 0.35em; }
-    .term-dim { color: #1a6; text-shadow: none; }
-    .term-prompt { color: #2d8; }
-    .term-menu-opt {
-      display: block;
-      width: 100%;
-      margin: 0;
-      padding: 6px 0;
-      border: none;
-      background: transparent;
-      font: inherit;
-      font-size: inherit;
-      line-height: inherit;
-      color: #2d8;
-      text-align: left;
-      text-shadow: 0 0 6px rgba(51, 255, 102, 0.35);
+    .rows { display: flex; flex-direction: column; gap: 0; }
+    .row {
+      display: grid;
+      grid-template-columns: minmax(100px, 1fr) minmax(0, 2fr) auto;
+      gap: 10px 14px;
+      align-items: center;
+      padding: 12px 14px;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      text-decoration: none;
+      color: inherit;
       cursor: pointer;
-      transition: color 160ms ease, text-shadow 160ms ease;
+      transition: background 0.15s ease;
     }
-    .term-menu-opt:disabled {
-      cursor: default;
-      color: #175;
-      text-shadow: none;
+    @media (hover: hover) and (pointer: fine) {
+      .row:hover {
+        background: rgba(107, 92, 62, 0.12);
+        cursor: pointer;
+      }
     }
-    .term-menu-opt:not(:disabled):hover,
-    .term-menu-opt:not(:disabled):focus-visible {
-      color: #6f6;
-      outline: none;
-      text-shadow: 0 0 10px rgba(102, 255, 102, 0.45);
+    .row-name { font-weight: 600; letter-spacing: 0.08em; color: var(--primary, #c8a96e); }
+    .row-desc { font-size: 11px; color: var(--muted, #6b5c3e); line-height: 1.4; }
+    .row-meta { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+    .row-arrow { color: var(--muted, #6b5c3e); font-size: 12px; }
+    .pill-tag {
+      font-size: 9px;
+      letter-spacing: 0.12em;
+      padding: 3px 8px;
+      border: 1px solid var(--primary, #c8a96e);
+      color: var(--primary, #c8a96e);
+      border-radius: 999px;
+      white-space: nowrap;
     }
-    .term-menu-opt:not(:disabled):focus-visible {
-      box-shadow: inset 3px 0 0 rgba(51, 255, 102, 0.5);
+    .row.phalanx {
+      border-color: rgba(200, 169, 110, 0.45);
+      background: rgba(200, 169, 110, 0.06);
     }
-    #transition-overlay {
-      position: fixed;
-      inset: 0;
-      z-index: 100;
-      pointer-events: none;
-      opacity: 0;
-      transition: opacity 400ms ease, background 600ms ease;
+    @media (max-width: 520px) {
+      .row {
+        grid-template-columns: 1fr;
+        gap: 6px;
+      }
+      .row-meta { justify-content: flex-start; }
     }
-    #transition-overlay.flash-vektor {
-      opacity: 1;
-      background: #0f0d08;
-      pointer-events: auto;
-    }
-    #transition-overlay.flash-gunner {
-      opacity: 1;
-      background: #5BA3D9;
-      pointer-events: auto;
-    }
-    #transition-msg {
-      position: fixed;
-      left: 50%;
-      top: 50%;
-      transform: translate(-50%, -50%);
-      z-index: 101;
+    footer {
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px solid #2a2318;
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      color: var(--muted, #6b5c3e);
       text-align: center;
-      opacity: 0;
-      transition: opacity 400ms ease;
-      width: 90%;
-      max-width: 640px;
-      padding: 20px;
     }
-    #transition-msg.visible { opacity: 1; }
-    .msg-vektor {
-      font-family: Georgia, "Times New Roman", serif;
-      font-size: clamp(28px, 8vw, 48px);
-      color: #c8a96e;
-      letter-spacing: 0.25em;
-      text-indent: 0.25em;
-    }
-    .msg-gunner {
-      font-family: "Press Start 2P", ui-monospace, monospace;
-      font-size: clamp(10px, 2.8vw, 14px);
-      color: #FFE066;
-      line-height: 1.6;
+    .hint {
+      margin-top: 20px;
+      font-size: 10px;
+      color: var(--vmuted, #3a3025);
+      letter-spacing: 0.1em;
     }
   </style>
 </head>
 <body>
-  <div id="terminal-wrap">
-    <div class="term-chrome">
-      <div class="term-dots" aria-hidden="true"><span></span><span></span><span></span></div>
-      <div class="term-title">ATORGAMES — REMOTE SESSION</div>
-      <div style="width:46px"></div>
-    </div>
-    <div class="term-screen-outer">
-      <div class="term-screen">
-        <div class="term-vignette"></div>
-        <div class="term-scanlines"></div>
-        <div id="term-out" aria-live="polite"></div>
-      </div>
-    </div>
-  </div>
-
-  <div id="transition-overlay"></div>
-  <div id="transition-msg"></div>
-
+  <header class="top">
+    <div class="brand">VEKTOR</div>
+    <button type="button" class="scheme-pill" id="schemePill" aria-label="Cycle color scheme">AMBER</button>
+  </header>
+  <p class="sub">A T O R&nbsp;&nbsp;G A M E S</p>
+  <nav class="rows" aria-label="Games">
+    <a class="row" href="/vektor/v1/">
+      <span class="row-name">RALLY</span>
+      <span class="row-desc">ball-and-paddle</span>
+      <span class="row-meta"><span class="pill-tag">LIVE</span><span class="row-arrow">→</span></span>
+    </a>
+    <a class="row" href="/vektor/v2/">
+      <span class="row-name">RALLY ENHANCED</span>
+      <span class="row-desc">color schemes</span>
+      <span class="row-meta"><span class="pill-tag">LIVE</span><span class="row-arrow">→</span></span>
+    </a>
+    <a class="row" href="/vektor/v4/">
+      <span class="row-name">DEBRIS</span>
+      <span class="row-desc">asteroid field</span>
+      <span class="row-meta"><span class="pill-tag">BETA</span><span class="row-arrow">→</span></span>
+    </a>
+    <a class="row" href="/vektor/breach/">
+      <span class="row-name">BREACH</span>
+      <span class="row-desc">grid infiltration</span>
+      <span class="row-meta"><span class="pill-tag">LIVE</span><span class="row-arrow">→</span></span>
+    </a>
+    <a class="row phalanx" href="/vektor/phalanx/">
+      <span class="row-name">PHALANX</span>
+      <span class="row-desc">arena sport</span>
+      <span class="row-meta"><span class="pill-tag">NEW</span><span class="row-arrow">→</span></span>
+    </a>
+  </nav>
+  <!-- CHARITY MODULE: insert here in future build -->
+  <p class="hint">Press <kbd>T</kbd> to cycle schemes</p>
+  <footer>ATOR GAMES&nbsp;&nbsp;·&nbsp;&nbsp;atorgames.com</footer>
   <script>
 (function () {
-  var wrap = document.getElementById('terminal-wrap');
-  var out = document.getElementById('term-out');
-  var overlay = document.getElementById('transition-overlay');
-  var menuArcadeBtn = null;
-  var menuGunnerBtn = null;
-  var transMsg = document.getElementById('transition-msg');
-
-  var actx = null;
-  function tickSound() {
-    try {
-      if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
-      if (actx.state === 'suspended') void actx.resume();
-      var sr = actx.sampleRate;
-      var n = Math.max(48, Math.floor(sr * 0.015));
-      var buf = actx.createBuffer(1, n, sr);
-      var d = buf.getChannelData(0);
-      for (var i = 0; i < n; i++) {
-        d[i] = Math.sin(2 * Math.PI * 2000 * i / sr) * 0.035 * (1 - i / n);
-      }
-      var src = actx.createBufferSource();
-      src.buffer = buf;
-      var g = actx.createGain();
-      g.gain.value = 0.45;
-      src.connect(g);
-      g.connect(actx.destination);
-      src.start();
-    } catch (e) {}
-  }
-
-  function typeInto(el, text, msPerChar, done, withSound) {
-    var i = 0;
-    function step() {
-      if (i < text.length) {
-        el.textContent += text.charAt(i);
-        i++;
-        if (withSound) tickSound();
-        setTimeout(step, msPerChar);
-      } else if (done) done();
-    }
-    el.textContent = '';
-    step();
-  }
-
-  function addLine(html, className) {
-    var div = document.createElement('div');
-    div.className = 'term-line' + (className ? ' ' + className : '');
-    div.innerHTML = html;
-    out.appendChild(div);
-  }
-
-  var bootLines = [
-    { text: '*** UPLINK ESTABLISHED ***', ms: 22, dim: true, sound: false },
-    { text: 'ATORGAMES_SUBSYSTEM ........... ONLINE', ms: 12, dim: true, sound: false },
-    { text: 'CARRIER ....................... LOCKED', ms: 12, dim: true, sound: false },
-    { text: 'HANDSHAKE ..................... OK', ms: 12, dim: true, sound: false },
-    { text: 'PRIMARY BUS ................... SYNC', ms: 12, dim: true, sound: false },
-    { text: 'KERNEL ........................ READY', ms: 12, dim: true, sound: false },
-    { text: 'SESSION ....................... GUEST', ms: 12, dim: true, sound: false },
-    { text: 'MEM: 64K  BUFFER OK  CHECKSUM OK', ms: 10, dim: true, sound: false },
-    { text: 'AWAITING INPUT...', ms: 14, dim: true, sound: false },
-    { text: '', ms: 0, dim: true, sound: false },
-    { text: '> HELLO.', ms: 35, dim: false, sound: true }
+  var SCHEMES = [
+    { name: 'AMBER', primary: '#c8a96e', muted: '#6b5c3e', vmuted: '#3a3025', border: '#2a2318' },
+    { name: 'PHOSPHOR', primary: '#39d353', muted: '#1a6b28', vmuted: '#0a2010', border: '#061208' },
+    { name: 'COBALT', primary: '#4d9fff', muted: '#1a4080', vmuted: '#0a1530', border: '#080c18' },
+    { name: 'CRIMSON', primary: '#ff4d6a', muted: '#801a28', vmuted: '#300a12', border: '#180608' },
+    { name: 'IVORY', primary: '#e8e4d0', muted: '#888070', vmuted: '#2a2a28', border: '#1e1e1c' },
+    { name: 'VIOLET', primary: '#b06eff', muted: '#5020a0', vmuted: '#1a0a30', border: '#100818' },
+    { name: 'EMBER', primary: '#ff7c2a', muted: '#803010', vmuted: '#301505', border: '#180c04' }
   ];
-
-  function runBoot(i, done) {
-    if (i >= bootLines.length) {
-      done();
-      return;
-    }
-    var row = bootLines[i];
-    if (!row.text) {
-      addLine('&nbsp;', 'term-dim');
-      runBoot(i + 1, done);
-      return;
-    }
-    var div = document.createElement('div');
-    div.className = 'term-line' + (row.dim ? ' term-dim' : ' term-prompt');
-    out.appendChild(div);
-    typeInto(div, row.text, row.ms, function () {
-      runBoot(i + 1, done);
-    }, row.sound);
-  }
-
-  function runQuestion(done) {
-    var div = document.createElement('div');
-    div.className = 'term-line term-prompt';
-    out.appendChild(div);
-    typeInto(div, '> Shall we play a game?', 35, function () {
-      setTimeout(function () {
-        showTerminalMenu(done);
-      }, 350);
-    }, true);
-  }
-
-  function showTerminalMenu(done) {
-    var hdr = document.createElement('div');
-    hdr.className = 'term-line term-dim';
-    hdr.textContent = 'SELECT:';
-    out.appendChild(hdr);
-
-    var m1 = document.createElement('button');
-    m1.type = 'button';
-    m1.className = 'term-line term-menu-opt';
-    m1.disabled = true;
-    m1.setAttribute('aria-label', 'Option 1: Arcade');
-    out.appendChild(m1);
-
-    var m2 = document.createElement('button');
-    m2.type = 'button';
-    m2.className = 'term-line term-menu-opt';
-    m2.disabled = true;
-    m2.setAttribute('aria-label', 'Option 2: Gunner');
-    out.appendChild(m2);
-
-    menuArcadeBtn = m1;
-    menuGunnerBtn = m2;
-    typeInto(m1, '[1] I\'m here for arcade', 28, function () {
-      m1.disabled = false;
-      m1.addEventListener('click', goArcade);
-      typeInto(m2, '[2] I\'m here for Gunner!', 28, function () {
-        m2.disabled = false;
-        m2.addEventListener('click', goGunner);
-        if (done) done();
-      }, false);
-    }, false);
-  }
-
-  document.addEventListener('keydown', function (e) {
-    if (e.defaultPrevented) return;
-    if (e.key === '1' && menuArcadeBtn && !menuArcadeBtn.disabled) {
-      e.preventDefault();
-      goArcade();
-    } else if (e.key === '2' && menuGunnerBtn && !menuGunnerBtn.disabled) {
-      e.preventDefault();
-      goGunner();
-    }
-  });
-
-  function loadPressStart(cb) {
-    if (document.getElementById('ps2p-font')) {
-      cb();
-      return;
-    }
-    var l = document.createElement('link');
-    l.id = 'ps2p-font';
-    l.rel = 'stylesheet';
-    l.href = 'https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap';
-    l.onload = function () { cb(); };
-    l.onerror = function () { cb(); };
-    document.head.appendChild(l);
-    setTimeout(cb, 300);
-  }
-
-  function goArcade() {
-    document.getElementById('terminal-wrap').style.opacity = '0';
-    document.getElementById('terminal-wrap').style.transition = 'opacity 400ms ease';
-    overlay.className = 'flash-vektor';
-    transMsg.innerHTML = '<div class="msg-vektor">V E K T O R</div>';
-    transMsg.classList.add('visible');
-    setTimeout(function () {
-      window.location.href = '/vektor/';
-    }, 800);
-  }
-
-  function goGunner() {
-    loadPressStart(function () {
-      document.getElementById('terminal-wrap').style.opacity = '0';
-      document.getElementById('terminal-wrap').style.transition = 'opacity 400ms ease';
-      overlay.className = 'flash-gunner';
-      transMsg.innerHTML = '<div class="msg-gunner">PROFESSOR GUNNER\'S<br>SCHOOLHOUSE</div>';
-      transMsg.classList.add('visible');
-      setTimeout(function () {
-        window.location.href = '/gunner/';
-      }, 800);
-    });
-  }
-
-  document.addEventListener('touchstart', function () {
+  var i = 0;
+  function apply() {
+    var s = SCHEMES[i];
+    document.documentElement.style.setProperty('--primary', s.primary);
+    document.documentElement.style.setProperty('--muted', s.muted);
+    document.documentElement.style.setProperty('--vmuted', s.vmuted);
+    document.documentElement.style.setProperty('--border', s.border);
+    document.getElementById('schemePill').textContent = s.name;
     try {
-      if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
-      void actx.resume();
+      localStorage.setItem('vektor-hub-scheme', String(i));
     } catch (e) {}
-  }, { once: true, passive: true });
-
-  requestAnimationFrame(function () {
-    wrap.classList.add('visible');
+  }
+  try {
+    var si = localStorage.getItem('vektor-hub-scheme');
+    if (si != null) i = Math.max(0, Math.min(SCHEMES.length - 1, parseInt(si, 10) || 0));
+  } catch (e) {}
+  apply();
+  function cycle() {
+    i = (i + 1) % SCHEMES.length;
+    apply();
+  }
+  document.getElementById('schemePill').addEventListener('click', cycle);
+  document.addEventListener('keydown', function (e) {
+    if (e.code === 'KeyT' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+      e.preventDefault();
+      cycle();
+    }
   });
-
-  setTimeout(function () {
-    runBoot(0, function () {
-      setTimeout(function () {
-        runQuestion(function () {});
-      }, 500);
-    });
-  }, 520);
 })();
   </script>
 </body>
