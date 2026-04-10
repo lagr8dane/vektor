@@ -347,6 +347,7 @@
   var streak = 0;
   var streakShow = 0;
   var bricksDestroyedSession = 0;
+  var brickStrikesThisLevel = 0;
   var nextPuAt = 0;
   var nextLifePuAt = 0;
   var noBallLostLevel = true;
@@ -431,13 +432,13 @@
     return Math.min(8, 4.7 + 0.15 * (lv - 5));
   }
 
-  /** Extra multiplier during a level: ramps with time and bricks cleared (caps ~+28%). */
+  /** Extra multiplier during a level: ramps with time and every brick strike (chip or break). */
   function sessionSpeedMul() {
     if (levelStartMs <= 0) return 1;
     var sec = (nowTime - levelStartMs) / 1000;
-    var fromTime = Math.min(0.14, sec / 150);
-    var fromBricks = Math.min(0.16, bricksDestroyedSession * 0.014);
-    return Math.min(1.28, 1 + fromTime + fromBricks);
+    var fromTime = Math.min(0.11, sec / 35);
+    var fromStrikes = Math.min(0.3, brickStrikesThisLevel * 0.008);
+    return Math.min(1.42, 1 + fromTime + fromStrikes);
   }
 
   function effectiveBallSpeed() {
@@ -762,6 +763,7 @@
     nextPuAt = puIntervalBricks(level);
     nextLifePuAt = 25 + Math.floor(rnd() * 20);
     bricksDestroyedSession = 0;
+    brickStrikesThisLevel = 0;
     activeEffects = [];
     magnetArmed = false;
     paddleW = PADDLE_W_BASE;
@@ -997,9 +999,17 @@
     var overlapB = by1 - (cy - BALL_R);
     var minO = Math.min(overlapL, overlapR, overlapT, overlapB);
     if (minO < 0) return false;
+    brickStrikesThisLevel++;
+    var spBase = effectiveBallSpeed();
+    if (hasEffect(PU.SLOW)) b.speed = spBase * 0.6;
+    else b.speed = spBase;
     if (!pierce) {
       if (minO === overlapL || minO === overlapR) reflectNorm(b, minO === overlapL ? 1 : -1, 0);
       else reflectNorm(b, 0, minO === overlapT ? 1 : -1);
+    } else {
+      var pm = Math.hypot(b.vx, b.vy) || 1;
+      b.vx = b.vx / pm * b.speed;
+      b.vy = b.vy / pm * b.speed;
     }
     br.hits--;
     streak++;
