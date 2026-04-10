@@ -107,13 +107,26 @@
       position: relative;
       width: 100%;
       max-width: min(96vw, 920px);
+      display: flex;
+      justify-content: center;
     }
     #gameCanvas {
       display: block;
       width: 100%;
+      max-width: min(96vw, 400px);
       height: auto;
       background: #0f0d08;
       touch-action: none;
+      cursor: pointer;
+    }
+    @media (min-width: 769px) {
+      #gameCanvas { max-width: min(96vw, 920px); cursor: default; }
+    }
+    body.touch-layout #gameCanvas {
+      max-height: min(58dvh, 620px);
+      width: auto;
+      max-width: 100%;
+      cursor: pointer;
     }
     .orient-overlay {
       display: none;
@@ -148,7 +161,7 @@
       letter-spacing: 0.1em;
     }
     .touch-strip button:active { background: rgba(200,169,110,0.2); color: #c8a96e; }
-    body.mobile-portrait .touch-strip.show { display: flex; }
+    body.touch-layout .touch-strip.show { display: flex; }
   </style>
 </head>
 <body>
@@ -231,21 +244,30 @@
   var schemeIndex = 0;
   function scheme() { return SCHEMES[schemeIndex]; }
 
-  var mobilePortrait = false;
+  var touchLayout = false;
   var mobileLandscapeWarn = false;
   var W = DESKTOP_W, H = DESKTOP_H;
   var cols = 10, rows = 8;
   var BRICK_W = 60, BRICK_H = 18, GAP = 4;
   var PADDLE_W_BASE = 80;
 
+  function mq(q) {
+    return window.matchMedia && window.matchMedia(q).matches;
+  }
+
   function layoutParams() {
     var w = window.innerWidth || DESKTOP_W;
     var h = window.innerHeight || DESKTOP_H;
-    var isMobile = w <= 600;
-    var portrait = isMobile && h >= w;
-    mobilePortrait = portrait;
-    mobileLandscapeWarn = isMobile && !portrait;
-    if (isMobile && portrait) {
+    var minDim = Math.min(w, h);
+    var hasTouch = 'ontouchstart' in window || (navigator.maxTouchPoints > 0);
+    var coarse = mq('(pointer: coarse)');
+    var anyCoarse = mq('(any-pointer: coarse)');
+    var hoverNone = mq('(hover: none)');
+    touchLayout = w <= 768 || coarse || anyCoarse
+      || (hasTouch && minDim <= 1024)
+      || (hasTouch && hoverNone);
+    mobileLandscapeWarn = touchLayout && w > h && minDim < 520;
+    if (touchLayout) {
       W = MOBILE_W; H = MOBILE_H;
       cols = 7; rows = 10;
       BRICK_W = 50; BRICK_H = 16;
@@ -258,15 +280,28 @@
     }
     canvas.width = W;
     canvas.height = H;
-    document.body.classList.toggle('mobile-portrait', mobilePortrait);
-    touchStrip.classList.toggle('show', mobilePortrait);
-    pillMobi.classList.toggle('show', w <= 600);
+    document.body.classList.toggle('touch-layout', touchLayout);
+    touchStrip.classList.toggle('show', touchLayout);
+    pillMobi.classList.toggle('show', w <= 768);
     if (mobileLandscapeWarn) {
       orientWarn.classList.add('on');
       orientText.style.color = scheme().primary;
     } else {
       orientWarn.classList.remove('on');
     }
+  }
+
+  function hintPrimary() {
+    var hasTouch = 'ontouchstart' in window || (navigator.maxTouchPoints > 0);
+    var narrow = minDimForHint();
+    return touchLayout || mq('(pointer: coarse)') || mq('(any-pointer: coarse)')
+      || hasTouch || mq('(hover: none)') || narrow <= 520;
+  }
+
+  function minDimForHint() {
+    var w = window.innerWidth || DESKTOP_W;
+    var h = window.innerHeight || DESKTOP_H;
+    return Math.min(w, h);
   }
 
   // ——————————————————————————————————————————————————————————————
@@ -502,7 +537,7 @@
   var brickZoneH = 0;
 
   function computeLayoutGeometry() {
-    brickZoneH = H * (mobilePortrait ? 0.6 : 0.65);
+    brickZoneH = H * (touchLayout ? 0.6 : 0.65);
     gridW = cols * BRICK_W + (cols - 1) * GAP;
     gridH = rows * BRICK_H + (rows - 1) * GAP;
     gridLeft = (W - gridW) / 2;
@@ -1192,7 +1227,7 @@
     var px = W - 14;
     var py0 = 40;
     var step = (H - 80) / icons;
-    if (mobilePortrait) {
+    if (touchLayout) {
       px = 10;
       py0 = H - 50;
       step = 22;
@@ -1203,9 +1238,9 @@
       ctx.save();
       ctx.strokeStyle = filled ? col.primary : col.vm;
       ctx.globalAlpha = filled ? 1 : 0.35;
-      var y = mobilePortrait ? py0 : py0 + i * step;
-      var x = mobilePortrait ? 12 + i * 26 : px;
-      if (mobilePortrait) {
+      var y = touchLayout ? py0 : py0 + i * step;
+      var x = touchLayout ? 12 + i * 26 : px;
+      if (touchLayout) {
         y = py0;
       }
       ctx.lineWidth = 1;
@@ -1366,7 +1401,7 @@
       ctx.font = '11px system-ui, sans-serif';
       ctx.letterSpacing = '0.12em';
       ctx.fillStyle = col.muted;
-      ctx.fillText('PRESS SPACE TO START', W / 2, H / 2 + 20);
+      ctx.fillText(hintPrimary() ? 'TAP HERE TO START' : 'PRESS SPACE TO START', W / 2, H / 2 + 20);
       ctx.letterSpacing = '0';
       ctx.restore();
       return;
@@ -1431,7 +1466,7 @@
       ctx.font = '12px system-ui, sans-serif';
       ctx.fillText('SCORE ' + score + ' · LEVEL ' + level, W / 2, H / 2 + 24);
       ctx.fillStyle = col.muted;
-      ctx.fillText('SPACE TO RESTART', W / 2, H / 2 + 52);
+      ctx.fillText(hintPrimary() ? 'TAP TO RESTART' : 'SPACE TO RESTART', W / 2, H / 2 + 52);
       ctx.restore();
       return;
     }
@@ -1458,7 +1493,7 @@
       ctx.font = '18px Georgia, serif';
       ctx.fillText('PAUSED', W / 2, H / 2);
       ctx.font = '10px system-ui, sans-serif';
-      ctx.fillText('P TO RESUME', W / 2, H / 2 + 28);
+      ctx.fillText(hintPrimary() ? 'TAP TO RESUME' : 'P TO RESUME', W / 2, H / 2 + 28);
       ctx.restore();
       return;
     }
@@ -1602,7 +1637,7 @@
   }
 
   function paddleMove() {
-    if (mobilePortrait) {
+    if (touchLayout) {
       if (keys.left) paddleVel = Math.max(paddleVel - 0.35, -6);
       else if (keys.right) paddleVel = Math.min(paddleVel + 0.35, 6);
       else paddleVel *= 0.82;
@@ -1675,17 +1710,7 @@
     if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = true;
     if (e.code === 'Space') {
       e.preventDefault();
-      if (gameState === STATE.TITLE) {
-        resetGame();
-        startLevelIntro();
-      } else if (gameState === STATE.GAME_OVER) {
-        resetGame();
-        gameState = STATE.TITLE;
-      } else if (gameState === STATE.PLAYING) {
-        balls.forEach(function (b) {
-          if (b.onPaddle) launchBall(b);
-        });
-      }
+      canvasPrimaryAction();
     }
   });
   window.addEventListener('keyup', function (e) {
@@ -1693,8 +1718,38 @@
     if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = false;
   });
 
+  var suppressCanvasClickUntil = 0;
+
+  function canvasPrimaryAction() {
+    if (gameState === STATE.TITLE) {
+      resetGame();
+      startLevelIntro();
+      return true;
+    }
+    if (gameState === STATE.GAME_OVER) {
+      resetGame();
+      gameState = STATE.TITLE;
+      return true;
+    }
+    if (gameState === STATE.PAUSED) {
+      gameState = STATE.PLAYING;
+      return true;
+    }
+    if (gameState === STATE.PLAYING) {
+      balls.forEach(function (b) { if (b.onPaddle) launchBall(b); });
+      return true;
+    }
+    return false;
+  }
+
+  canvas.addEventListener('click', function () {
+    if (performance.now() < suppressCanvasClickUntil) return;
+    resumeA();
+    canvasPrimaryAction();
+  });
+
   canvas.addEventListener('mousemove', function (e) {
-    if (mobilePortrait) return;
+    if (touchLayout) return;
     var r = canvas.getBoundingClientRect();
     mouseX = (e.clientX - r.left) / r.width * W;
   });
@@ -1702,14 +1757,14 @@
 
   canvas.addEventListener('touchstart', function (e) {
     resumeA();
-    if (gameState === STATE.PLAYING) {
+    if (canvasPrimaryAction()) {
+      suppressCanvasClickUntil = performance.now() + 450;
       e.preventDefault();
-      balls.forEach(function (b) { if (b.onPaddle) launchBall(b); });
     }
   }, { passive: false });
 
   canvas.addEventListener('touchmove', function (e) {
-    if (!mobilePortrait || e.touches.length === 0) return;
+    if (!touchLayout || e.touches.length === 0) return;
     var r = canvas.getBoundingClientRect();
     var tx = (e.touches[0].clientX - r.left) / r.width * W;
     paddleX = tx;
