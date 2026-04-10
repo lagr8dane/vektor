@@ -407,6 +407,14 @@
     ];
   }
 
+  function scaleRgb(rgb, s) {
+    return [
+      Math.min(255, Math.round(rgb[0] * s)),
+      Math.min(255, Math.round(rgb[1] * s)),
+      Math.min(255, Math.round(rgb[2] * s))
+    ];
+  }
+
   function pickBrickRgb(flags) {
     if (flags.isGate) return [230, 188, 88];
     if (flags.isSignal) return [72, 214, 255];
@@ -680,25 +688,12 @@
       c: c, r: r, x: R.x, y: R.y, w: R.w, h: R.h,
       maxHits: maxHits, hits: maxHits,
       rgb: pickBrickRgb(flags),
-      cracks: [],
       dead: false,
       powerUp: flags.powerUp,
       isGate: flags.isGate,
       isSignal: flags.isSignal,
       faultNear: flags.faultNear
     };
-  }
-
-  function addCrack(br) {
-    var n = 2 + Math.floor(rnd() * 2);
-    for (var i = 0; i < n; i++) {
-      br.cracks.push({
-        x0: br.x + 4 + rnd() * (br.w - 8),
-        y0: br.y + 4 + rnd() * (br.h - 8),
-        x1: br.x + 4 + rnd() * (br.w - 8),
-        y1: br.y + 4 + rnd() * (br.h - 8)
-      });
-    }
   }
 
   function spawnBrickParticles(br, col) {
@@ -1007,7 +1002,6 @@
       else reflectNorm(b, 0, minO === overlapT ? 1 : -1);
     }
     br.hits--;
-    addCrack(br);
     streak++;
     streakShow = 60;
     if (br.hits <= 0) destroyBrick(br);
@@ -1186,30 +1180,28 @@
   function drawBrick(br, col, t) {
     if (br.dead) return;
     ctx.save();
-    var op = 1;
-    if (br.maxHits === 3) {
-      if (br.hits === 2) op = 0.75;
-      else if (br.hits === 1) op = 0.5;
-    } else if (br.maxHits === 2 && br.hits === 1) op = 0.75;
-    var rgb = br.rgb && br.rgb.length === 3 ? br.rgb : [200, 170, 120];
+    var dmg = br.maxHits - br.hits;
+    var dim = dmg > 0 ? Math.max(0.38, 0.36 + 0.64 * (br.hits / br.maxHits)) : 1;
+    var baseRgb = br.rgb && br.rgb.length === 3 ? br.rgb : [200, 170, 120];
+    var rgb = scaleRgb(baseRgb, dim);
     var rim = lightenRgb(rgb, 1.18);
     var pulse = 0.88 + 0.12 * Math.sin(t * 0.004 + br.c * 0.55 + br.r * 0.62 + br.maxHits * 0.4);
 
-    ctx.globalAlpha = op * 0.22;
+    ctx.globalAlpha = 0.22;
     ctx.fillStyle = rgbRgba(rgb, 1);
     ctx.fillRect(br.x + 1, br.y + 1, br.w - 2, br.h - 2);
-    ctx.globalAlpha = op;
+    ctx.globalAlpha = 1;
 
     ctx.strokeStyle = rgbRgba(lightenRgb(rgb, 1.35), 0.55);
     ctx.lineWidth = br.isGate ? 3.5 : 2.5;
-    ctx.globalAlpha = op * 0.32 * pulse;
+    ctx.globalAlpha = 0.32 * pulse;
     if (br.isGate) {
       ctx.strokeRect(br.x - 0.5, br.y - 0.5, br.w + 1, br.h + 7);
     } else {
       ctx.strokeRect(br.x - 0.5, br.y - 0.5, br.w + 1, br.h + 1);
     }
 
-    ctx.globalAlpha = op * pulse;
+    ctx.globalAlpha = pulse;
     ctx.strokeStyle = rgbRgba(rim, 0.92);
     ctx.lineWidth = br.isGate ? 2 : 1.5;
     if (br.isGate) {
@@ -1225,15 +1217,6 @@
       ctx.strokeRect(br.x, br.y, br.w, br.h);
     }
 
-    ctx.strokeStyle = rgbRgba(rgb, 0.55);
-    ctx.lineWidth = 1;
-    ctx.globalAlpha = Math.min(1, op + 0.2);
-    br.cracks.forEach(function (cr) {
-      ctx.beginPath();
-      ctx.moveTo(cr.x0, cr.y0);
-      ctx.lineTo(cr.x1, cr.y1);
-      ctx.stroke();
-    });
     ctx.restore();
 
     if (goalType === GOAL.SIGNAL && revealUntil > performance.now() && !br.dead) {
@@ -1871,8 +1854,14 @@
       togglePauseFromControls();
       return;
     }
-    if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = true;
-    if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = true;
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
+      keys.left = true;
+      mouseX = null;
+    }
+    if (e.code === 'ArrowRight' || e.code === 'KeyD') {
+      keys.right = true;
+      mouseX = null;
+    }
     if (e.code === 'Space') {
       e.preventDefault();
       canvasPrimaryAction();
