@@ -614,6 +614,7 @@
     soundOn = !soundOn;
     localStorage.setItem('vektor-v4-sound', soundOn ? '1' : '0');
     syncS();
+    if (!soundOn) stopThrustSound();
     if (soundOn) primeAudioFromGesture();
   });
 
@@ -845,6 +846,101 @@
       if (pr && typeof pr.then === 'function') pr.then(play).catch(play);
       else requestAnimationFrame(function () { requestAnimationFrame(play); });
     }
+  }
+
+  /** Looped filtered noise + sub sine — Asteroids-style thrust rumble */
+  var thrustNoiseBufCache = Object.create(null);
+  function makeThrustNoiseBuffer(a) {
+    var sr = a.sampleRate;
+    var dur = 1.1;
+    var n = Math.floor(sr * dur);
+    var buf = a.createBuffer(1, n, sr);
+    var d = buf.getChannelData(0);
+    for (var i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * 0.88;
+    return buf;
+  }
+  var thrustVoice = null;
+  function stopThrustSound() {
+    if (!thrustVoice) return;
+    var tv = thrustVoice;
+    thrustVoice = null;
+    try {
+      var a = tv.a;
+      var t = a.currentTime;
+      tv.gMix.gain.cancelScheduledValues(t);
+      var cur = tv.gMix.gain.value;
+      tv.gMix.gain.setValueAtTime(cur, t);
+      tv.gMix.gain.linearRampToValueAtTime(0, t + 0.05);
+      setTimeout(function () {
+        try {
+          tv.noise.stop();
+          tv.rumble.stop();
+        } catch (e) {}
+      }, 70);
+    } catch (e) {
+      try {
+        tv.noise.stop();
+        tv.rumble.stop();
+      } catch (e2) {}
+    }
+  }
+  function startThrustSound() {
+    if (!soundOn || thrustVoice) return;
+    var a = getA();
+    ensureMasterGain(a);
+    var master = a._vMaster;
+    var run = function () {
+      if (a.state !== 'running' || !soundOn || thrustVoice) return;
+      try {
+        var key = 'thrustNoise|' + a.sampleRate;
+        var nbuf = thrustNoiseBufCache[key];
+        if (!nbuf) {
+          nbuf = makeThrustNoiseBuffer(a);
+          thrustNoiseBufCache[key] = nbuf;
+        }
+        var noise = a.createBufferSource();
+        noise.buffer = nbuf;
+        noise.loop = true;
+        var filt = a.createBiquadFilter();
+        filt.type = 'lowpass';
+        filt.frequency.value = isTouch || iosLikeAudio ? 640 : 760;
+        filt.Q.value = 0.65;
+        var rumble = a.createOscillator();
+        rumble.type = 'sine';
+        rumble.frequency.value = 56;
+        var gNoise = a.createGain();
+        var gRumble = a.createGain();
+        var mob = isTouch || iosLikeAudio ? 1.32 : 1;
+        gNoise.gain.value = 0.11 * mob;
+        gRumble.gain.value = 0.048 * mob;
+        var gMix = a.createGain();
+        gMix.gain.value = 0;
+        noise.connect(filt);
+        filt.connect(gNoise);
+        gNoise.connect(gMix);
+        rumble.connect(gRumble);
+        gRumble.connect(gMix);
+        gMix.connect(master);
+        var t0 = a.currentTime + 0.002;
+        rumble.start(t0);
+        noise.start(t0);
+        gMix.gain.setValueAtTime(0, t0);
+        gMix.gain.linearRampToValueAtTime(1, t0 + 0.045);
+        thrustVoice = { a: a, noise: noise, rumble: rumble, gMix: gMix };
+      } catch (e) {}
+    };
+    try { void a.resume(); } catch (e) {}
+    if (a.state === 'running') run();
+    else {
+      var pr = a.resume();
+      if (pr && typeof pr.then === 'function') pr.then(run).catch(run);
+      else requestAnimationFrame(function () { requestAnimationFrame(run); });
+    }
+  }
+  function syncThrustSound() {
+    var want = soundOn && phase === 'play' && !paused && thrust && shipBreakup <= 0 && ship.inv <= 0 && !(levelPopup && levelPopup.t > 0);
+    if (want) startThrustSound();
+    else stopThrustSound();
   }
 
   var phase = 'idle';
@@ -1286,6 +1382,7 @@
         });
       }
       drawIdle(now);
+      syncThrustSound();
       return;
     }
 
@@ -1303,6 +1400,7 @@
       ctx.fillStyle = '#6b5c3e';
       ctx.fillText(isTouch ? 'TAP TO PLAY AGAIN' : 'CLICK TO CONTINUE', W / 2, H / 2 + 44);
       ctx.textAlign = 'left';
+      syncThrustSound();
       return;
     }
 
@@ -1532,6 +1630,7 @@
       ctx.fillText('PAUSED', W / 2, H / 2);
       ctx.textAlign = 'left';
     }
+    syncThrustSound();
   }
 
   setSch(0);
