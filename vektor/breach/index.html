@@ -1346,40 +1346,71 @@
     });
   }
 
+  function drawLifeStickFigure(cx, footY, filled, col, flash) {
+    var headR = 3;
+    var headCy = footY - 14;
+    var shoulderY = footY - 10;
+    var hipY = footY - 4;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = flash ? 2 : filled ? 1.4 : 1;
+    ctx.strokeStyle = flash ? col.trailA : filled ? col.primary : col.vm;
+    ctx.globalAlpha = filled || flash ? 1 : 0.34;
+
+    ctx.beginPath();
+    ctx.arc(cx, headCy, headR, 0, Math.PI * 2);
+    if (filled) {
+      ctx.fillStyle = flash ? col.trailA : col.primary;
+      var fa = flash ? 0.5 : 0.88;
+      ctx.globalAlpha = fa;
+      ctx.fill();
+      ctx.globalAlpha = filled || flash ? 1 : 0.34;
+    }
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(cx, headCy + headR);
+    ctx.lineTo(cx, hipY);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(cx - 4.5, shoulderY);
+    ctx.lineTo(cx + 4.5, shoulderY);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(cx, hipY);
+    ctx.lineTo(cx - 3.5, footY);
+    ctx.moveTo(cx, hipY);
+    ctx.lineTo(cx + 3.5, footY);
+    ctx.stroke();
+  }
+
   function drawIntegrityRail(col) {
     var icons = 5;
-    var px = W - 14;
-    var py0 = 40;
-    var step = (H - 80) / icons;
+    var px = W - 16;
+    var py0 = 52;
+    var step = (H - 100) / Math.max(1, icons - 1);
     if (touchLayout) {
       px = 10;
-      py0 = H - 50;
-      step = 22;
+      py0 = H - 48;
+      step = 26;
     }
     var filledCount = Math.min(LIFE_MAX, lives + 1);
     for (var i = 0; i < icons; i++) {
       var filled = i < filledCount;
+      var flash = integrityFlash === i && flashLife > 0;
       ctx.save();
-      ctx.strokeStyle = filled ? col.primary : col.vm;
-      ctx.globalAlpha = filled ? 1 : 0.35;
-      var y = touchLayout ? py0 : py0 + i * step;
-      var x = touchLayout ? 12 + i * 26 : px;
+      var footY;
+      var x;
       if (touchLayout) {
-        y = py0;
+        x = 16 + i * step;
+        footY = py0;
+      } else {
+        x = px;
+        footY = py0 + i * step;
       }
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(x - 6, y);
-      ctx.lineTo(x + 6, y);
-      ctx.lineTo(x + 4, y + 3);
-      ctx.lineTo(x - 4, y + 3);
-      ctx.closePath();
-      ctx.stroke();
-      if (integrityFlash === i && flashLife > 0) {
-        ctx.globalAlpha = 0.9;
-        ctx.strokeStyle = col.trailA;
-        ctx.stroke();
-      }
+      drawLifeStickFigure(x, footY, filled, col, flash);
       ctx.restore();
     }
   }
