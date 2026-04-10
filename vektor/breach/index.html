@@ -445,6 +445,11 @@
     return ballSpeedForLevel(level) * sessionSpeedMul();
   }
 
+  /** Paddle follows the same strike/time ramp, a bit softer than the ball (cap 1.28×). */
+  function sessionPaddleMoveMul() {
+    return Math.min(1.28, 1 + (sessionSpeedMul() - 1) * 0.72);
+  }
+
   function brickRowsForLevel(lv) {
     if (lv <= 1) return 5;
     if (lv === 2) return 6;
@@ -1826,14 +1831,18 @@
   }
 
   function paddleMove() {
+    var pm = sessionPaddleMoveMul();
     if (touchLayout) {
-      if (keys.left) paddleVel = Math.max(paddleVel - 0.35, -6);
-      else if (keys.right) paddleVel = Math.min(paddleVel + 0.35, 6);
+      var acc = 0.35 * pm;
+      var vmax = 6 * pm;
+      if (keys.left) paddleVel = Math.max(paddleVel - acc, -vmax);
+      else if (keys.right) paddleVel = Math.min(paddleVel + acc, vmax);
       else paddleVel *= 0.82;
       paddleX += paddleVel;
     } else {
-      if (keys.left) paddleX -= 8;
-      if (keys.right) paddleX += 8;
+      var step = 8 * pm;
+      if (keys.left) paddleX -= step;
+      if (keys.right) paddleX += step;
       if (mouseX != null && !keys.left && !keys.right) {
         paddleX = mouseX;
       }
