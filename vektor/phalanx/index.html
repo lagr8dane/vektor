@@ -152,6 +152,7 @@ var SCHEMES = [
 var PU = { SPEED: 0, FREEZE: 1, SHIELD: 2, BOOST: 3, MAGNET: 4 };
 var PU_ICONS = ['»', '*', '□', '^', '⌇'];
 var STATE = { TITLE: 0, PREMATCH: 1, KICKOFF: 2, FIRST_HALF: 3, HALFTIME: 4, SECOND_HALF: 5, FULLTIME: 6, PAUSED: 7 };
+var practiceMode = false;
 
 var canvas = document.getElementById('c');
 var ctx = canvas.getContext('2d');
@@ -289,6 +290,7 @@ function extractTendencies() {
 }
 
 async function callAgent(moment) {
+  if (practiceMode) return;
   if (!navigator.onLine) {
     applyFallbackTactics();
     showAgentMessage('No scouting data available.');
@@ -952,6 +954,71 @@ function updateHuman() {
   clampPlayer(p);
 }
 
+function moveHumanToward(p, tx, ty, spd) {
+  var d = Math.hypot(tx - p.x, ty - p.y);
+  if (d < 2.5) return;
+  var inv = spd / d;
+  var mx = (tx - p.x) * inv;
+  var my = (ty - p.y) * inv;
+  p.x += mx;
+  p.y += my;
+  p.vx = mx;
+  p.vy = my;
+  clampPlayer(p);
+}
+
+function humanGkTeammateAI(p) {
+  var g = goalRects().player;
+  var gl = g.x + 10, gr = g.x + GOAL_W - 10;
+  var tx = Math.max(gl, Math.min(gr, ball.x));
+  p.x += (tx - p.x) * GK_TRACK;
+  var lineY = field.y + field.h * 0.85;
+  p.y = lineY;
+  humanGoalieDive(p);
+}
+
+function updateHumanTeammates() {
+  for (var i = 0; i < players.length; i++) {
+    var p = players[i];
+    if (p.team !== 'human' || i === activeHumanIdx) continue;
+    if (p.stun > 0) {
+      p.stun--;
+      continue;
+    }
+    var spd = 2.65;
+    var car = carrier();
+    if (p.role === 0) {
+      humanGkTeammateAI(p);
+      continue;
+    }
+    if (p.hasBall) {
+      if (p.y < field.y + field.h * 0.36 && rnd() < 0.018) {
+        shootFrom(p, SHOOT_SPD);
+        continue;
+      }
+      moveHumanToward(p, cx(), field.y + GOAL_D + 50, 2.35);
+      continue;
+    }
+    if (car && car.team === 'human' && car !== p) {
+      var tx = car.x + (p.role === 2 ? 32 : -24);
+      var ty = car.y + (p.role === 2 ? -32 : 18);
+      moveHumanToward(p, tx, ty, spd);
+      continue;
+    }
+    if (ball.loose) {
+      var ox = (p.id - 2) * 20;
+      var oy = p.role === 1 ? 14 : -10;
+      moveHumanToward(p, ball.x + ox, ball.y + oy, spd);
+      continue;
+    }
+    if (car && car.team === 'cpu') {
+      moveHumanToward(p, ball.x, ball.y, spd * 1.05);
+      continue;
+    }
+    moveHumanToward(p, cx(), field.y + field.h * 0.52, spd * 0.45);
+  }
+}
+
 function humanGoalieDive(p) {
   var inArc = ball.y > field.y + field.h * 0.78;
   var spd = Math.hypot(ball.vx, ball.vy);
@@ -1184,10 +1251,17 @@ function drawTopBar(col) {
   ctx.fillStyle = col.primary;
   ctx.font = '11px monospace';
   ctx.fillText('P ' + score.p + '  —  ' + score.c + ' CPU', 8, 20);
-  var halfStr = half === 1 ? '1ST' : '2ND';
-  var rem = Math.max(0, HALF_MS - elapsedHalf);
-  var s = Math.floor(rem / 1000);
-  ctx.fillText(halfStr + ' · ' + s + 's', W / 2 - 28, 20);
+  ctx.textAlign = 'center';
+  if (practiceMode) {
+    ctx.fillStyle = col.muted;
+    ctx.fillText('PRACTICE', W / 2, 20);
+  } else {
+    var halfStr = half === 1 ? '1ST' : '2ND';
+    var rem = Math.max(0, HALF_MS - elapsedHalf);
+    var s = Math.floor(rem / 1000);
+    ctx.fillText(halfStr + ' · ' + s + 's', W / 2, 20);
+  }
+  ctx.textAlign = 'left';
   if (multiplier > 1 && multTimer > 0) {
     ctx.globalAlpha = 0.5 + 0.5 * Math.sin(performance.now() * 0.012);
     ctx.fillText('x2', W - 50, 20);
@@ -1213,6 +1287,7 @@ function drawBottomBar(col, playUi) {
       if (e.type === PU.SPEED) txt += '»' + left + 's ';
       if (e.type === PU.FREEZE) txt += '*' + left + 's ';
     });
+    if (practiceMode) txt = (txt ? txt + ' · ' : '') + 'AI teammates · ESC title';
     ctx.fillText(txt, 6, H - 12);
   }
   var msg = (gameState === STATE.FIRST_HALF || gameState === STATE.SECOND_HALF) ? '' : agentMsg;
@@ -1260,7 +1335,9 @@ function drawTitle() {
   ctx.fillText('ancient arena sport', W / 2, H / 2 - 28);
   ctx.fillText('reimagined', W / 2, H / 2 - 12);
   ctx.fillStyle = col.primary;
-  ctx.fillText('[PRESS SPACE TO PLAY]', W / 2, H / 2 + 28);
+  ctx.fillText('[SPACE] MATCH  ·  halves & agent', W / 2, H / 2 + 24);
+  ctx.fillStyle = col.muted;
+  ctx.fillText('[Y] PRACTICE  ·  AI teammates, no clock', W / 2, H / 2 + 44);
   ctx.textAlign = 'left';
 }
 
@@ -1378,7 +1455,32 @@ function drawKickoffOverlay() {
 }
 
 // ═══ MATCH FLOW ════════════════════════════════════════════════════
+function startPractice() {
+  practiceMode = true;
+  score = { p: 0, c: 0 };
+  half = 1;
+  goalLog = [];
+  multiplier = 1;
+  multTimer = 0;
+  powerups = [];
+  nextPuSpawn = performance.now() + 15000;
+  activeEffects = [];
+  agentMsg = '';
+  prematchMsg = '';
+  halftimeMsg = '';
+  postMatchSummary = '';
+  elapsedHalf = 0;
+  resetPositions(true);
+  ball.x = cx();
+  ball.y = cy();
+  ball.loose = false;
+  ball.vx = ball.vy = 0;
+  activeHumanIdx = 1;
+  startKickoffCountdown();
+}
+
 function resetMatch() {
+  practiceMode = false;
   score = { p: 0, c: 0 };
   half = 1;
   goalLog = [];
@@ -1436,12 +1538,13 @@ function tickPlay() {
     if (multTimer <= 0) multiplier = 1;
   }
   elapsedHalf = performance.now() - halfStart;
-  if (elapsedHalf >= HALF_MS) {
+  if (!practiceMode && elapsedHalf >= HALF_MS) {
     endHalf();
     return;
   }
   updateActiveHuman();
   updateHuman();
+  updateHumanTeammates();
   updateCpu();
   separatePlayers();
   moveBall();
@@ -1587,6 +1690,15 @@ window.addEventListener('keydown', function (e) {
   }
   if (e.code === 'Escape') {
     if (gameState === STATE.FULLTIME || gameState === STATE.PAUSED) gameState = STATE.TITLE;
+    else if (practiceMode && (gameState === STATE.FIRST_HALF || gameState === STATE.SECOND_HALF || gameState === STATE.KICKOFF)) {
+      practiceMode = false;
+      gameState = STATE.TITLE;
+    }
+    return;
+  }
+  if (e.code === 'KeyY' && gameState === STATE.TITLE) {
+    e.preventDefault();
+    startPractice();
     return;
   }
   if (e.code === 'Space') {
