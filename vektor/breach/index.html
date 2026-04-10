@@ -375,6 +375,7 @@
   var signalWinDone = false;
   var winReason = '';
   var canvasShake = 0;
+  var levelStartMs = 0;
   var collapseAnim = null;
   var implosionT = 0;
   var coreShockT = 0;
@@ -394,6 +395,19 @@
     if (lv === 3) return 4.1;
     if (lv === 4) return 4.4;
     return Math.min(8, 4.7 + 0.15 * (lv - 5));
+  }
+
+  /** Extra multiplier during a level: ramps with time and bricks cleared (caps ~+28%). */
+  function sessionSpeedMul() {
+    if (levelStartMs <= 0) return 1;
+    var sec = (nowTime - levelStartMs) / 1000;
+    var fromTime = Math.min(0.14, sec / 150);
+    var fromBricks = Math.min(0.16, bricksDestroyedSession * 0.014);
+    return Math.min(1.28, 1 + fromTime + fromBricks);
+  }
+
+  function effectiveBallSpeed() {
+    return ballSpeedForLevel(level) * sessionSpeedMul();
   }
 
   function brickRowsForLevel(lv) {
@@ -560,7 +574,7 @@
     gridW = cols * BRICK_W + (cols - 1) * GAP;
     gridH = rows * BRICK_H + (rows - 1) * GAP;
     gridLeft = (W - gridW) / 2;
-    gridTop = 8 + (brickZoneH - gridH) * 0.15;
+    gridTop = 8 + (brickZoneH - gridH) * 0.52;
     paddleY = H - H * 0.15 + PADDLE_H;
   }
 
@@ -582,6 +596,7 @@
     return {
       c: c, r: r, x: R.x, y: R.y, w: R.w, h: R.h,
       maxHits: maxHits, hits: maxHits,
+      rimIx: (c * 5 + r * 7 + maxHits * 3 + (flags.isGate ? 19 : 0) + (flags.isSignal ? 31 : 0)) % 4,
       cracks: [],
       dead: false,
       powerUp: flags.powerUp,
@@ -848,7 +863,7 @@
   // BALLS
   // ——————————————————————————————————————————————————————————————
   function resetBallsToPaddle() {
-    var sp = ballSpeedForLevel(level);
+    var sp = effectiveBallSpeed();
     if (hasEffect(PU.SLOW)) sp *= 0.6;
     balls = [{
       x: paddleX,
@@ -992,7 +1007,7 @@
 
   function updateBall(b, eff) {
     if (levelComplete) return;
-    var spBase = ballSpeedForLevel(level);
+    var spBase = effectiveBallSpeed();
     if (eff.slow) b.speed = spBase * 0.6;
     else b.speed = spBase;
 
@@ -1084,6 +1099,12 @@
   // ——————————————————————————————————————————————————————————————
   // DRAW
   // ——————————————————————————————————————————————————————————————
+  function brickRimColor(col, br) {
+    var ix = br.rimIx != null ? br.rimIx : 0;
+    var pal = [col.trailA, col.primary, col.muted, col.vm];
+    return pal[ix % pal.length];
+  }
+
   function drawBrick(br, col, t) {
     if (br.dead) return;
     ctx.save();
@@ -1092,9 +1113,26 @@
       if (br.hits === 2) op = 0.75;
       else if (br.hits === 1) op = 0.5;
     } else if (br.maxHits === 2 && br.hits === 1) op = 0.75;
+    var rim = brickRimColor(col, br);
+    var pulse = 0.88 + 0.12 * Math.sin(t * 0.004 + br.c * 0.55 + br.r * 0.62 + br.maxHits * 0.4);
+
+    ctx.globalAlpha = op * 0.14;
+    ctx.fillStyle = rim;
+    ctx.fillRect(br.x + 1, br.y + 1, br.w - 2, br.h - 2);
     ctx.globalAlpha = op;
-    ctx.strokeStyle = col.primary;
-    ctx.lineWidth = br.isGate ? 2 : 1;
+
+    ctx.strokeStyle = col.trailA;
+    ctx.lineWidth = br.isGate ? 3.5 : 2.5;
+    ctx.globalAlpha = op * 0.22 * pulse;
+    if (br.isGate) {
+      ctx.strokeRect(br.x - 0.5, br.y - 0.5, br.w + 1, br.h + 7);
+    } else {
+      ctx.strokeRect(br.x - 0.5, br.y - 0.5, br.w + 1, br.h + 1);
+    }
+
+    ctx.globalAlpha = op * pulse;
+    ctx.strokeStyle = rim;
+    ctx.lineWidth = br.isGate ? 2 : 1.5;
     if (br.isGate) {
       ctx.strokeRect(br.x, br.y, br.w, br.h + 6);
       ctx.beginPath();
@@ -1107,7 +1145,9 @@
     } else {
       ctx.strokeRect(br.x, br.y, br.w, br.h);
     }
+
     ctx.strokeStyle = col.muted;
+    ctx.lineWidth = 1;
     ctx.globalAlpha = Math.min(1, op + 0.2);
     br.cracks.forEach(function (cr) {
       ctx.beginPath();
@@ -1119,8 +1159,11 @@
 
     if (goalType === GOAL.SIGNAL && revealUntil > performance.now() && !br.dead) {
       if (br.c === signalBrickCol && br.r === signalBrickRow && !signalActive) {
-        ctx.strokeStyle = col.primary;
+        ctx.strokeStyle = col.trailA;
         ctx.lineWidth = 2;
+        ctx.strokeRect(br.x - 2, br.y - 2, br.w + 4, br.h + 4);
+        ctx.strokeStyle = col.primary;
+        ctx.lineWidth = 1;
         ctx.strokeRect(br.x - 1, br.y - 1, br.w + 2, br.h + 2);
       }
     }
@@ -1447,6 +1490,7 @@
       ctx.globalAlpha = 1;
       if (now >= introUntil) {
         gameState = STATE.PLAYING;
+        levelStartMs = now;
       }
       ctx.restore();
       return;
