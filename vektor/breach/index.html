@@ -387,6 +387,32 @@
     return rngSeed / 0x7fffffff;
   }
 
+  var BRICK_RGB_PALETTE = [
+    [235, 85, 120], [255, 145, 60], [48, 210, 168], [92, 158, 255],
+    [186, 98, 245], [255, 205, 72], [62, 198, 252], [132, 224, 92],
+    [255, 118, 88], [244, 78, 198], [64, 226, 214], [255, 178, 95],
+    [168, 132, 255], [240, 230, 90], [120, 200, 255], [255, 100, 160]
+  ];
+
+  function rgbRgba(rgb, a) {
+    return 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + a + ')';
+  }
+
+  function lightenRgb(rgb, f) {
+    f = f == null ? 1.22 : f;
+    return [
+      Math.min(255, Math.round(rgb[0] * f + 18)),
+      Math.min(255, Math.round(rgb[1] * f + 16)),
+      Math.min(255, Math.round(rgb[2] * f + 14))
+    ];
+  }
+
+  function pickBrickRgb(flags) {
+    if (flags.isGate) return [230, 188, 88];
+    if (flags.isSignal) return [72, 214, 255];
+    return BRICK_RGB_PALETTE[Math.floor(rnd() * BRICK_RGB_PALETTE.length)];
+  }
+
   var activeEffects = [];
 
   function ballSpeedForLevel(lv) {
@@ -653,7 +679,7 @@
     return {
       c: c, r: r, x: R.x, y: R.y, w: R.w, h: R.h,
       maxHits: maxHits, hits: maxHits,
-      rimIx: (c * 5 + r * 7 + maxHits * 3 + (flags.isGate ? 19 : 0) + (flags.isSignal ? 31 : 0)) % 4,
+      rgb: pickBrickRgb(flags),
       cracks: [],
       dead: false,
       powerUp: flags.powerUp,
@@ -677,13 +703,14 @@
 
   function spawnBrickParticles(br, col) {
     var n = 8 + Math.floor(rnd() * 5);
+    var pcol = br.rgb && br.rgb.length === 3 ? rgbRgba(lightenRgb(br.rgb, 1.05), 1) : col.primary;
     for (var i = 0; i < n; i++) {
       var a = rnd() * Math.PI * 2;
       var sp = 1 + rnd() * 3;
       particles.push({
         x: br.x + br.w / 2, y: br.y + br.h / 2,
         vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
-        life: 30, max: 30, col: col.primary
+        life: 30, max: 30, col: pcol
       });
     }
   }
@@ -1156,12 +1183,6 @@
   // ——————————————————————————————————————————————————————————————
   // DRAW
   // ——————————————————————————————————————————————————————————————
-  function brickRimColor(col, br) {
-    var ix = br.rimIx != null ? br.rimIx : 0;
-    var pal = [col.trailA, col.primary, col.muted, col.vm];
-    return pal[ix % pal.length];
-  }
-
   function drawBrick(br, col, t) {
     if (br.dead) return;
     ctx.save();
@@ -1170,17 +1191,18 @@
       if (br.hits === 2) op = 0.75;
       else if (br.hits === 1) op = 0.5;
     } else if (br.maxHits === 2 && br.hits === 1) op = 0.75;
-    var rim = brickRimColor(col, br);
+    var rgb = br.rgb && br.rgb.length === 3 ? br.rgb : [200, 170, 120];
+    var rim = lightenRgb(rgb, 1.18);
     var pulse = 0.88 + 0.12 * Math.sin(t * 0.004 + br.c * 0.55 + br.r * 0.62 + br.maxHits * 0.4);
 
-    ctx.globalAlpha = op * 0.14;
-    ctx.fillStyle = rim;
+    ctx.globalAlpha = op * 0.22;
+    ctx.fillStyle = rgbRgba(rgb, 1);
     ctx.fillRect(br.x + 1, br.y + 1, br.w - 2, br.h - 2);
     ctx.globalAlpha = op;
 
-    ctx.strokeStyle = col.trailA;
+    ctx.strokeStyle = rgbRgba(lightenRgb(rgb, 1.35), 0.55);
     ctx.lineWidth = br.isGate ? 3.5 : 2.5;
-    ctx.globalAlpha = op * 0.22 * pulse;
+    ctx.globalAlpha = op * 0.32 * pulse;
     if (br.isGate) {
       ctx.strokeRect(br.x - 0.5, br.y - 0.5, br.w + 1, br.h + 7);
     } else {
@@ -1188,7 +1210,7 @@
     }
 
     ctx.globalAlpha = op * pulse;
-    ctx.strokeStyle = rim;
+    ctx.strokeStyle = rgbRgba(rim, 0.92);
     ctx.lineWidth = br.isGate ? 2 : 1.5;
     if (br.isGate) {
       ctx.strokeRect(br.x, br.y, br.w, br.h + 6);
@@ -1203,7 +1225,7 @@
       ctx.strokeRect(br.x, br.y, br.w, br.h);
     }
 
-    ctx.strokeStyle = col.muted;
+    ctx.strokeStyle = rgbRgba(rgb, 0.55);
     ctx.lineWidth = 1;
     ctx.globalAlpha = Math.min(1, op + 0.2);
     br.cracks.forEach(function (cr) {
