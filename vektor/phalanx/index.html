@@ -23,6 +23,31 @@
       gap: 8px;
       margin-bottom: 6px;
     }
+    .bar-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .bar-btn {
+      border: 1px solid #2a2318;
+      background: transparent;
+      color: #c8a96e;
+      padding: 4px 10px;
+      font: inherit;
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      cursor: pointer;
+      min-height: 32px;
+    }
+    .bar-btn:disabled {
+      opacity: 0.35;
+      cursor: default;
+    }
+    .bar-btn:not(:disabled):active {
+      opacity: 0.85;
+    }
     .bar-top a {
       color: #6b5c3e;
       text-decoration: none;
@@ -71,7 +96,10 @@
 <body>
   <div class="bar-top">
     <a href="/vektor/">← VEKTOR</a>
-    <button type="button" id="schemeBtn" style="border:1px solid #2a2318;background:transparent;color:#c8a96e;padding:4px 10px;font:inherit;font-size:10px;letter-spacing:0.12em;cursor:pointer;">AMBER</button>
+    <div class="bar-actions">
+      <button type="button" class="bar-btn" id="pauseBtn" disabled aria-label="Pause">Pause</button>
+      <button type="button" class="bar-btn" id="schemeBtn">AMBER</button>
+    </div>
   </div>
   <div class="wrap">
     <canvas id="c" width="420" height="680"></canvas>
@@ -128,6 +156,7 @@ var STATE = { TITLE: 0, PREMATCH: 1, KICKOFF: 2, FIRST_HALF: 3, HALFTIME: 4, SEC
 var canvas = document.getElementById('c');
 var ctx = canvas.getContext('2d');
 var schemeBtn = document.getElementById('schemeBtn');
+var pauseBtn = document.getElementById('pauseBtn');
 var touchEl = document.getElementById('touch');
 var si = 0;
 try {
@@ -1258,23 +1287,40 @@ function drawPrematch() {
 }
 
 function drawHalftime() {
-  drawWorld(false);
+  drawWorld(true);
   var col = scheme();
-  ctx.fillStyle = 'rgba(15,13,8,0.88)';
-  ctx.fillRect(0, TOP_UI, W, H - TOP_UI - BOT_UI);
+  ctx.fillStyle = 'rgba(0,0,0,0.48)';
+  ctx.fillRect(0, 0, W, H);
+  var bx = W * 0.08, by = cy() - 78, bw = W - bx * 2, bh = 156;
+  ctx.strokeStyle = col.border;
+  ctx.lineWidth = 1;
+  ctx.fillStyle = 'rgba(15,13,8,0.82)';
+  ctx.beginPath();
+  var r = 8;
+  ctx.moveTo(bx + r, by);
+  ctx.arcTo(bx + bw, by, bx + bw, by + bh, r);
+  ctx.arcTo(bx + bw, by + bh, bx, by + bh, r);
+  ctx.arcTo(bx, by + bh, bx, by, r);
+  ctx.arcTo(bx, by, bx + bw, by, r);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
   ctx.fillStyle = col.primary;
   ctx.textAlign = 'center';
   ctx.font = '16px monospace';
-  ctx.fillText('HALF TIME', W / 2, cy() - 60);
+  ctx.fillText('HALF TIME', W / 2, cy() - 58);
   ctx.font = '12px monospace';
-  ctx.fillText('PLAYER  ' + score.p + '  —  ' + score.c + '  CPU', W / 2, cy() - 30);
+  ctx.fillText('PLAYER  ' + score.p + '  —  ' + score.c + '  CPU', W / 2, cy() - 32);
   ctx.font = '9px monospace';
   ctx.fillStyle = col.muted;
-  (halftimeMsg || agentMsg || '').slice(0, 120).match(/.{1,38}/g) || [''].forEach(function (ln, i) {
-    ctx.fillText(ln, W / 2, cy() + i * 11);
+  var note = halftimeMsg || agentMsg || '—';
+  note.slice(0, 120).match(/.{1,36}/g) || [''].forEach(function (ln, i) {
+    ctx.fillText(ln, W / 2, cy() - 8 + i * 12);
   });
   var left = Math.max(0, Math.ceil((halftimeEnd - performance.now()) / 1000));
-  ctx.fillText('SECOND HALF IN ' + left, W / 2, cy() + 55);
+  ctx.fillStyle = col.primary;
+  ctx.font = '10px monospace';
+  ctx.fillText('SECOND HALF IN ' + left + 's', W / 2, cy() + 58);
   ctx.textAlign = 'left';
 }
 
@@ -1312,7 +1358,7 @@ function drawPause() {
   ctx.fillText('PAUSED', W / 2, cy() - 40);
   ctx.font = '9px monospace';
   ctx.fillStyle = col.muted;
-  ctx.fillText('[P] RESUME', W / 2, cy() - 10);
+  ctx.fillText('Tap Resume or [P]', W / 2, cy() - 10);
   ctx.fillText('[M] MUTE / UNMUTE', W / 2, cy() + 8);
   ctx.fillText('[T] SCHEME', W / 2, cy() + 26);
   ctx.fillText('[ESC] TITLE', W / 2, cy() + 44);
@@ -1437,10 +1483,33 @@ function tickKickoff() {
 }
 
 // ═══ LOOP ═════════════════════════════════════════════════════════
+function togglePause() {
+  if (gameState === STATE.FIRST_HALF || gameState === STATE.SECOND_HALF) {
+    pausedReturnState = gameState;
+    gameState = STATE.PAUSED;
+  } else if (gameState === STATE.PAUSED) {
+    gameState = pausedReturnState;
+  }
+}
+
+function syncBarButtons() {
+  var col = scheme();
+  schemeBtn.textContent = scheme().name;
+  schemeBtn.style.borderColor = col.border;
+  schemeBtn.style.color = col.primary;
+  var canPause = gameState === STATE.FIRST_HALF || gameState === STATE.SECOND_HALF;
+  var paused = gameState === STATE.PAUSED;
+  pauseBtn.disabled = !canPause && !paused;
+  pauseBtn.textContent = paused ? 'Resume' : 'Pause';
+  pauseBtn.setAttribute('aria-label', paused ? 'Resume' : 'Pause');
+  pauseBtn.style.borderColor = col.border;
+  pauseBtn.style.color = paused ? col.primary : col.muted;
+}
+
 function loop() {
   requestAnimationFrame(loop);
   prime();
-  schemeBtn.textContent = scheme().name;
+  syncBarButtons();
   try {
     localStorage.setItem('phalanx_scheme', String(si));
   } catch (e) {}
@@ -1513,12 +1582,7 @@ window.addEventListener('keydown', function (e) {
     return;
   }
   if (e.code === 'KeyP') {
-    if (gameState === STATE.FIRST_HALF || gameState === STATE.SECOND_HALF) {
-      pausedReturnState = gameState;
-      gameState = STATE.PAUSED;
-    } else if (gameState === STATE.PAUSED) {
-      gameState = pausedReturnState;
-    }
+    togglePause();
     return;
   }
   if (e.code === 'Escape') {
@@ -1545,6 +1609,13 @@ window.addEventListener('keyup', function (e) {
 
 schemeBtn.addEventListener('click', function () {
   si = (si + 1) % SCHEMES.length;
+});
+
+pauseBtn.addEventListener('click', function () {
+  prime();
+  if (gameState === STATE.FIRST_HALF || gameState === STATE.SECOND_HALF || gameState === STATE.PAUSED) {
+    togglePause();
+  }
 });
 
 canvas.addEventListener('click', function () {
