@@ -200,18 +200,37 @@
       text-align: center;
     }
     .win-layer.on { display: flex; }
+    .win-layer.lose { box-shadow: inset 0 0 80px rgba(80, 20, 20, 0.25); }
+    .win-layer .fx-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .win-layer .win-stack {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      max-width: 100%;
+    }
     .win-layer .wm {
       font-family: Georgia, serif;
-      font-size: 28px;
-      letter-spacing: 0.3em;
-      text-indent: 0.3em;
-      margin-bottom: 16px;
+      font-size: clamp(22px, 5vw, 28px);
+      letter-spacing: 0.28em;
+      text-indent: 0.28em;
+      margin-bottom: 12px;
     }
     .win-layer .res {
       font-family: Georgia, serif;
-      font-size: 20px;
+      font-size: clamp(15px, 4vw, 20px);
       letter-spacing: 0.1em;
-      margin-bottom: 28px;
+      margin-bottom: 26px;
+      line-height: 1.35;
+      white-space: pre-line;
     }
     .btn-play {
       border: 1px solid #c8a96e;
@@ -375,9 +394,12 @@
     <div class="scanlines" id="scanlines" style="display:none;"></div>
     <canvas id="c" width="600" height="400"></canvas>
     <div class="win-layer" id="winLayer">
-      <div class="wm" id="winWm">V E K T O R</div>
-      <div class="res" id="winRes"></div>
-      <button type="button" class="btn-play" id="btnAgain">Play again</button>
+      <canvas class="fx-canvas" id="winFx" width="600" height="400" aria-hidden="true"></canvas>
+      <div class="win-stack">
+        <div class="wm" id="winWm">V E K T O R</div>
+        <div class="res" id="winRes"></div>
+        <button type="button" class="btn-play" id="btnAgain">Play again</button>
+      </div>
     </div>
   </div>
   <p class="status" id="status"></p>
@@ -511,6 +533,7 @@
   const dotsP = document.getElementById('dotsP');
   const dotsC = document.getElementById('dotsC');
   const winLayer = document.getElementById('winLayer');
+  const winFx = document.getElementById('winFx');
   const winWm = document.getElementById('winWm');
   const winRes = document.getElementById('winRes');
   const btnAgain = document.getElementById('btnAgain');
@@ -762,9 +785,109 @@
     withRunningAudio(() => {
       if (!audioCtx) return;
       const t0 = audioCtx.currentTime;
-      beep({ type: 'square', freq: 200, dur: 0.15, vol: 0.2, t0: t0 });
-      beep({ type: 'square', freq: 120, dur: 0.2, vol: 0.18, t0: t0 + 0.14 });
+      const womp = [
+        { type: 'sawtooth', freq: 185, dur: 0.16, vol: 0.17 },
+        { type: 'sawtooth', freq: 145, dur: 0.18, vol: 0.16 },
+        { type: 'sawtooth', freq: 100, dur: 0.22, vol: 0.15 },
+        { type: 'sawtooth', freq: 72, dur: 0.28, vol: 0.13 }
+      ];
+      let off = 0;
+      womp.forEach((o) => {
+        beep({ type: o.type, freq: o.freq, dur: o.dur, vol: o.vol, t0: t0 + off });
+        off += o.dur * 0.52;
+      });
     });
+  }
+
+  function approxHueFromText(text) {
+    if (text && text.startsWith('hsl')) {
+      const m = /hsl\(\s*([0-9.]+)/.exec(text);
+      if (m) return Number(m[1]);
+    }
+    return 42;
+  }
+
+  let winFxRaf = null;
+  const winFxParts = [];
+  let winFxCelebrating = false;
+  let winFxDisco = false;
+  let winFxHueBase = 42;
+
+  function pushWinBurst(cx, cy, fixedHue) {
+    const n = 28;
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = 1.8 + Math.random() * 4;
+      winFxParts.push({
+        x: cx, y: cy,
+        vx: Math.cos(a) * sp,
+        vy: Math.sin(a) * sp - 0.85,
+        life: 1,
+        hue: fixedHue == null ? winFxHueBase + Math.random() * 40 : fixedHue,
+        drag: 0.977 + Math.random() * 0.02
+      });
+    }
+  }
+
+  function stepWinFx(now) {
+    if (!winLayer.classList.contains('on') || !winFxCelebrating) {
+      winFxRaf = null;
+      return;
+    }
+    const x = winFx.getContext('2d');
+    if (!x) return;
+    winFxRaf = requestAnimationFrame(stepWinFx);
+    x.clearRect(0, 0, W, H);
+    for (let i = winFxParts.length - 1; i >= 0; i--) {
+      const p = winFxParts[i];
+      p.vy += 0.055;
+      p.vx *= p.drag;
+      p.vy *= p.drag;
+      p.x += p.vx;
+      p.y += p.vy;
+      p.life -= 0.013;
+      if (p.life <= 0) {
+        winFxParts.splice(i, 1);
+        continue;
+      }
+      let hue = p.hue;
+      if (winFxDisco) hue = (now / 22 + p.x * 0.12 + i * 3) % 360;
+      x.globalAlpha = Math.min(1, p.life);
+      x.fillStyle = 'hsl(' + hue + ',' + (winFxDisco ? 88 : 78) + '%,' + (winFxDisco ? 56 : 62) + '%)';
+      x.beginPath();
+      x.arc(p.x, p.y, 2.4, 0, Math.PI * 2);
+      x.fill();
+    }
+    x.globalAlpha = 1;
+    if (Math.random() < 0.088) {
+      const fh = winFxDisco ? null : winFxHueBase + Math.random() * 30;
+      pushWinBurst(Math.random() * W, H * 0.28 + Math.random() * H * 0.58, fh);
+    }
+  }
+
+  function startWinFx(col) {
+    stopWinFx();
+    winFxCelebrating = true;
+    winFxDisco = !!col.disco;
+    winFxHueBase = col.disco ? ((performance.now() / 28) % 360) : approxHueFromText(col.text);
+    const c2 = winFx.getContext('2d');
+    if (c2) c2.clearRect(0, 0, W, H);
+    winFxParts.length = 0;
+    for (let b = 0; b < 5; b++) {
+      const fh = col.disco ? null : winFxHueBase + b * 14;
+      pushWinBurst(W * (0.12 + b * 0.19), H * (0.36 + (b % 2) * 0.14), fh);
+    }
+    winFxRaf = requestAnimationFrame(stepWinFx);
+  }
+
+  function stopWinFx() {
+    winFxCelebrating = false;
+    winFxDisco = false;
+    if (winFxRaf) cancelAnimationFrame(winFxRaf);
+    winFxRaf = null;
+    winFxParts.length = 0;
+    const x = winFx.getContext('2d');
+    if (x) x.clearRect(0, 0, W, H);
   }
 
   let gameP = 0, gameC = 0;
@@ -791,10 +914,12 @@
   }
 
   function resetMatch() {
+    stopWinFx();
     gameP = gameC = 0;
     matchP = matchC = 0;
     matchOver = false;
     winLayer.classList.remove('on');
+    winLayer.classList.remove('lose');
     ballSpeed = speedMin();
     running = false;
     paused = false;
@@ -974,6 +1099,9 @@
     ctx.letterSpacing = '0.15em';
     ctx.fillText('R A L L Y   E N H A N C E D', W / 2, 88);
     ctx.letterSpacing = '0';
+    ctx.font = '9px system-ui, sans-serif';
+    ctx.fillStyle = '#3a3025';
+    ctx.fillText('FIRST TO ' + GAMES_TO_WIN_MATCH + ' GAME WINS  ·  ' + POINTS_TO_WIN_GAME + ' PTS PER GAME', W / 2, 104);
     const labels = ['CADET', 'PILOT', 'ACE'];
     diffHitRects = [];
     const sizes = [];
@@ -992,13 +1120,13 @@
       const active = diffKey === key;
       ctx.fillStyle = active ? col.text : '#3a3025';
       const mid = cx + sizes[j] / 2;
-      ctx.fillText(labels[j], mid, 118);
-      diffHitRects.push({ key, x: cx - 4, y: 118 - 14, w: sizes[j] + 8, h: 22 });
+      ctx.fillText(labels[j], mid, 124);
+      diffHitRects.push({ key, x: cx - 4, y: 124 - 14, w: sizes[j] + 8, h: 22 });
       cx += sizes[j] + 40;
     }
     ctx.textAlign = 'left';
     ctx.letterSpacing = '0';
-    const iy = 148;
+    const iy = 156;
     ctx.fillStyle = '#3a3025';
     ctx.font = '9px system-ui, sans-serif';
     ctx.letterSpacing = '0.15em';
@@ -1121,13 +1249,16 @@
     const col = resolveSchemeColors(performance.now());
     const bg = hexToRgb(col.bg);
     winLayer.style.background = 'rgba(' + bg.r + ',' + bg.g + ',' + bg.b + ',0.92)';
+    winLayer.classList.toggle('lose', !playerWon);
     winLayer.classList.add('on');
-    winWm.textContent = 'V E K T O R';
+    if (playerWon) startWinFx(col);
+    else stopWinFx();
+    winWm.textContent = playerWon ? 'YOU WIN' : 'MATCH OVER';
     winWm.style.color = col.text;
     winRes.style.color = col.text;
     winRes.textContent = playerWon
-      ? 'YOU WIN  ' + matchP + ' — ' + matchC
-      : 'CPU WINS  ' + matchP + ' — ' + matchC;
+      ? 'You take the match\n' + matchP + ' games · ' + matchC + ' games\nFirst to ' + GAMES_TO_WIN_MATCH + ' game wins'
+      : 'CPU takes the match\n' + matchP + ' games · ' + matchC + ' games';
     btnAgain.style.borderColor = col.text;
     btnAgain.style.color = col.text;
     if (playerWon) sndMatchWinPlayer();

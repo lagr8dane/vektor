@@ -676,6 +676,177 @@
     }
   }
 
+  /** Downward exponential chirp — arcade laser / phaser bolt */
+  var laserBufCache = Object.create(null);
+  function makeLaserBuffer(a) {
+    var sr = a.sampleRate;
+    var dur = 0.055;
+    var n = Math.max(256, Math.floor(sr * dur));
+    var buf = a.createBuffer(1, n, sr);
+    var ch = buf.getChannelData(0);
+    var phase = 0;
+    var fHi = 3400;
+    var fLo = 380;
+    var volBoost = isTouch || iosLikeAudio ? 1.4 : 1;
+    var amp = Math.min(0.22, 0.1 * volBoost);
+    for (var i = 0; i < n; i++) {
+      var u = i / Math.max(1, n - 1);
+      var f = fHi * Math.pow(fLo / fHi, u);
+      phase += (2 * Math.PI * f) / sr;
+      if (phase > Math.PI * 2000) phase -= Math.PI * 2000;
+      var atk = Math.min(1, i / (sr * 0.004));
+      var env = atk * Math.exp(-u * 5.5);
+      ch[i] = Math.sin(phase) * env * amp;
+    }
+    return buf;
+  }
+  function playLaser() {
+    if (!soundOn) return;
+    var a = getA();
+    ensureMasterGain(a);
+    var key = 'laser|' + a.sampleRate;
+    var buf = laserBufCache[key];
+    if (!buf) {
+      buf = makeLaserBuffer(a);
+      laserBufCache[key] = buf;
+    }
+    var master = a._vMaster;
+    var play = function () {
+      try {
+        if (a.state !== 'running') return;
+        var src = a.createBufferSource();
+        src.buffer = buf;
+        var g = a.createGain();
+        g.gain.value = isTouch || iosLikeAudio ? 1.12 : 1;
+        src.connect(g);
+        g.connect(master);
+        src.start(a.currentTime + 0.002);
+      } catch (e) {}
+    };
+    try { void a.resume(); } catch (e) {}
+    if (a.state === 'running') play();
+    else {
+      var pr = a.resume();
+      if (pr && typeof pr.then === 'function') pr.then(play).catch(play);
+      else requestAnimationFrame(function () { requestAnimationFrame(play); });
+    }
+  }
+
+  /**
+   * Asteroids-style breakup: filtered noise + short body tone (no samples — Web Audio buffer).
+   * tier 3 = large rumble, 2 = medium, 1 = small pop.
+   */
+  var explosionBufCache = Object.create(null);
+  function makeExplosionBuffer(a, tier) {
+    var sr = a.sampleRate;
+    var dur = tier >= 3 ? 0.22 : tier >= 2 ? 0.15 : 0.095;
+    var decayK = tier >= 3 ? 10.5 : tier >= 2 ? 14 : 18;
+    var toneStart = tier >= 3 ? 95 : tier >= 2 ? 140 : 200;
+    var n = Math.max(128, Math.floor(sr * dur));
+    var buf = a.createBuffer(1, n, sr);
+    var ch = buf.getChannelData(0);
+    var volBoost = isTouch || iosLikeAudio ? 1.35 : 1;
+    var peak = (tier >= 3 ? 0.42 : tier >= 2 ? 0.32 : 0.24) * volBoost;
+    var toneMix = tier >= 3 ? 0.38 : tier >= 2 ? 0.32 : 0.26;
+    for (var i = 0; i < n; i++) {
+      var t = i / sr;
+      var env = Math.exp(-t * decayK);
+      var noise = (Math.random() * 2 - 1) * (1 - toneMix);
+      var toneFreq = toneStart * (0.55 + 0.45 * Math.exp(-t * (tier >= 3 ? 9 : 12)));
+      var tone = Math.sin(2 * Math.PI * toneFreq * t) * toneMix;
+      ch[i] = (noise + tone) * env * peak;
+    }
+    return buf;
+  }
+  function playExplosion(tier, gainMul) {
+    if (!soundOn) return;
+    gainMul = gainMul == null ? 1 : Math.max(0, gainMul);
+    var tk = tier >= 3 ? 3 : tier >= 2 ? 2 : 1;
+    var a = getA();
+    ensureMasterGain(a);
+    var key = 'boom|' + a.sampleRate + '|' + tk;
+    var buf = explosionBufCache[key];
+    if (!buf) {
+      buf = makeExplosionBuffer(a, tk);
+      explosionBufCache[key] = buf;
+    }
+    var master = a._vMaster;
+    var play = function () {
+      try {
+        if (a.state !== 'running') return;
+        var src = a.createBufferSource();
+        src.buffer = buf;
+        var g = a.createGain();
+        g.gain.value = 0.92 * gainMul;
+        src.connect(g);
+        g.connect(master);
+        src.start(a.currentTime + 0.002);
+      } catch (e) {}
+    };
+    try { void a.resume(); } catch (e) {}
+    if (a.state === 'running') play();
+    else {
+      var pr = a.resume();
+      if (pr && typeof pr.then === 'function') pr.then(play).catch(play);
+      else requestAnimationFrame(function () { requestAnimationFrame(play); });
+    }
+  }
+
+  /** Soft two-tone level-clear blip (retro vector cabinet vibe) */
+  var wavePingBufCache = Object.create(null);
+  function makeWavePingBuffer(a) {
+    var sr = a.sampleRate;
+    var dur = 0.14;
+    var n = Math.floor(sr * dur);
+    var buf = a.createBuffer(1, n, sr);
+    var ch = buf.getChannelData(0);
+    var volBoost = isTouch || iosLikeAudio ? 1.25 : 1;
+    var amp = 0.09 * volBoost;
+    function toneSlice(start, len, freq) {
+      for (var j = 0; j < len && start + j < n; j++) {
+        var t = j / sr;
+        var env = Math.sin((Math.PI * j) / Math.max(1, len - 1)) * Math.exp(-t * 6);
+        ch[start + j] += Math.sin(2 * Math.PI * freq * t) * env * amp;
+      }
+    }
+    var h1 = Math.floor(sr * 0.045);
+    var h2 = Math.floor(sr * 0.05);
+    toneSlice(0, h1, 784);
+    toneSlice(h1, h2, 1175);
+    return buf;
+  }
+  function playWavePing() {
+    if (!soundOn) return;
+    var a = getA();
+    ensureMasterGain(a);
+    var key = 'ping|' + a.sampleRate;
+    var buf = wavePingBufCache[key];
+    if (!buf) {
+      buf = makeWavePingBuffer(a);
+      wavePingBufCache[key] = buf;
+    }
+    var master = a._vMaster;
+    var play = function () {
+      try {
+        if (a.state !== 'running') return;
+        var src = a.createBufferSource();
+        src.buffer = buf;
+        var g = a.createGain();
+        g.gain.value = 1.05;
+        src.connect(g);
+        g.connect(master);
+        src.start(a.currentTime + 0.002);
+      } catch (e) {}
+    };
+    try { void a.resume(); } catch (e) {}
+    if (a.state === 'running') play();
+    else {
+      var pr = a.resume();
+      if (pr && typeof pr.then === 'function') pr.then(play).catch(play);
+      else requestAnimationFrame(function () { requestAnimationFrame(play); });
+    }
+  }
+
   var phase = 'idle';
   var paused = false;
   var wave = 1;
@@ -800,6 +971,7 @@
   }
 
   function splitRock(rk, col) {
+    playExplosion(rk.tier);
     var idx = rocks.indexOf(rk);
     if (idx >= 0) rocks.splice(idx, 1);
     explode(rk.x, rk.y, col.rock, 8);
@@ -817,7 +989,8 @@
     if (score >= nextExtra) {
       lives++;
       nextExtra += D().extraLifeScore;
-      beep(660, 'square', 0.15, 0.12);
+      beep(990, 'sine', 0.05, 0.09);
+      setTimeout(function () { beep(1320, 'sine', 0.08, 0.1); }, 52);
     }
   }
 
@@ -828,7 +1001,7 @@
       var bonus = wave === 1 ? 500 : wave === 2 ? 750 : wave * 300;
       score += bonus;
       bonusFlash = { amt: bonus, t: 60 };
-      beep(523, 'square', 0.1, 0.15);
+      playWavePing();
       wave++;
       startWave();
       levelPopup = { t: LEVEL_POPUP_FRAMES };
@@ -848,14 +1021,18 @@
       lives--;
       beep(120, 'sawtooth', 0.3, 0.2);
       if (lives <= 0) gameOver();
-    } else beep(200, 'sine', 0.08, 0.1);
+    } else {
+      beep(420, 'sine', 0.02, 0.06);
+      setTimeout(function () { beep(880, 'sine', 0.045, 0.07); }, 38);
+    }
   }
 
   function gameOver() {
     phase = 'gameover';
     saveHS();
     canvas.classList.add('can-tap');
-    beep(100, 'sawtooth', 0.4, 0.15);
+    playExplosion(3, 0.55);
+    beep(72, 'sine', 0.35, 0.14);
   }
 
   function fire() {
@@ -870,7 +1047,7 @@
       vy: Math.sin(ship.ang) * sp + ship.vy * 0.3,
       life: D().bulletLifetime
     });
-    beep(880, 'square', 0.05, 0.08);
+    playLaser();
   }
 
   function hitShip() {
@@ -884,8 +1061,11 @@
     ship.ang = -Math.PI / 2;
     ship.inv = 0;
     shipBreakup = 32;
-    beep(150, 'sawtooth', 0.25, 0.18);
     if (lives <= 0) gameOver();
+    else {
+      playExplosion(2, 0.45);
+      beep(95, 'sine', 0.2, 0.12);
+    }
   }
 
   document.addEventListener('keydown', function (e) {
@@ -1219,7 +1399,7 @@
                 explode(Hn.x, Hn.y, col.ship, 12);
                 hunters.splice(hj, 1);
                 hit = true;
-                beep(400, 'square', 0.1, 0.12);
+                playExplosion(2, 0.85);
                 break;
               }
             }

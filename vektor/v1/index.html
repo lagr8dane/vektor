@@ -107,6 +107,71 @@
       background: #0f0d08;
     }
     canvas.can-tap { cursor: pointer; }
+    .go-layer {
+      display: none;
+      position: absolute;
+      inset: 0;
+      z-index: 5;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(15, 13, 8, 0.93);
+      padding: 20px;
+      text-align: center;
+    }
+    .go-layer.on { display: flex; }
+    .go-layer.lose { background: rgba(22, 10, 8, 0.94); }
+    .go-fx {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .go-stack {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      max-width: 100%;
+    }
+    .go-title {
+      font-family: Georgia, serif;
+      font-size: clamp(22px, 5vw, 30px);
+      letter-spacing: 0.22em;
+      text-indent: 0.22em;
+      color: #c8a96e;
+      margin-bottom: 10px;
+    }
+    .go-layer.lose .go-title { color: #a08070; }
+    .go-res {
+      font-family: Georgia, serif;
+      font-size: clamp(16px, 4vw, 20px);
+      letter-spacing: 0.1em;
+      color: #c8a96e;
+      margin-bottom: 22px;
+      line-height: 1.35;
+      white-space: pre-line;
+    }
+    .go-layer.lose .go-res { color: #8a7060; }
+    .btn-play {
+      border: 1px solid #c8a96e;
+      color: #c8a96e;
+      padding: 8px 20px;
+      font-size: 10px;
+      letter-spacing: 0.15em;
+      background: transparent;
+      cursor: pointer;
+      text-transform: uppercase;
+      font-family: system-ui, sans-serif;
+      min-height: 44px;
+      min-width: 120px;
+    }
+    @media (hover: hover) and (pointer: fine) {
+      .btn-play:hover { background: rgba(200, 169, 110, 0.1); }
+    }
     .status {
       margin-top: 14px;
       font-size: 11px;
@@ -222,6 +287,14 @@
   </div>
   <div class="canvas-wrap">
     <canvas id="c" width="600" height="400"></canvas>
+    <div class="go-layer" id="goLayer">
+      <canvas class="go-fx" id="goFx" width="600" height="400" aria-hidden="true"></canvas>
+      <div class="go-stack">
+        <div class="go-title" id="goTitle">GAME OVER</div>
+        <div class="go-res" id="goRes"></div>
+        <button type="button" class="btn-play" id="btnAgain">Play again</button>
+      </div>
+    </div>
   </div>
   <p class="status" id="status"></p>
   <p class="hint" id="hintDesk">← → OR A D TO MOVE · SPACE TO PAUSE</p>
@@ -242,6 +315,7 @@
   const BALL_R = 7;
   const PLAYER_SPEED = 7;
   const TRAIL_LEN = 8;
+  const POINTS_TO_WIN = 7;
   const FRAME_MS = 1000 / 60;
   const DIFF_KEY = 'vektor-difficulty';
   const DIFFICULTY = {
@@ -259,6 +333,11 @@
   const hintDesk = document.getElementById('hintDesk');
   const diffHud = document.getElementById('diffHud');
   const scoreRow = document.getElementById('scoreRow');
+  const goLayer = document.getElementById('goLayer');
+  const goFx = document.getElementById('goFx');
+  const goTitle = document.getElementById('goTitle');
+  const goRes = document.getElementById('goRes');
+  const btnAgain = document.getElementById('btnAgain');
   const touchBar = document.getElementById('touchBar');
   const touchPause = document.getElementById('touchPause');
   const touchL = document.getElementById('touchL');
@@ -416,6 +495,172 @@
     if (audioCtx.state === 'running') play();
     else void audioCtx.resume().then(play);
   }
+  function sndYouWinRally() {
+    if (!soundEnabled || !audioCtx) return;
+    var play = function () {
+      var t0 = audioCtx.currentTime;
+      var freqs = [523, 659, 784, 988];
+      for (var i = 0; i < freqs.length; i++) {
+        var osc = audioCtx.createOscillator();
+        var g = audioCtx.createGain();
+        osc.type = mapOscType('square');
+        osc.frequency.setValueAtTime(freqs[i], t0 + i * 0.11);
+        g.gain.setValueAtTime(0, t0 + i * 0.11);
+        g.gain.linearRampToValueAtTime(0.18, t0 + i * 0.11 + 0.006);
+        g.gain.exponentialRampToValueAtTime(0.001, t0 + i * 0.11 + 0.16);
+        osc.connect(g);
+        g.connect(audioCtx.destination);
+        osc.start(t0 + i * 0.11);
+        osc.stop(t0 + i * 0.11 + 0.2);
+      }
+    };
+    if (audioCtx.state === 'running') play();
+    else void audioCtx.resume().then(play);
+  }
+  function sndCpuWinsRally() {
+    if (!soundEnabled || !audioCtx) return;
+    var play = function () {
+      var t0 = audioCtx.currentTime;
+      var seq = [
+        { f: 180, d: 0.14, v: 0.16 },
+        { f: 140, d: 0.16, v: 0.15 },
+        { f: 95, d: 0.2, v: 0.14 },
+        { f: 70, d: 0.22, v: 0.12 }
+      ];
+      var off = 0;
+      for (var i = 0; i < seq.length; i++) {
+        var s = seq[i];
+        var osc = audioCtx.createOscillator();
+        var g = audioCtx.createGain();
+        osc.type = mapOscType('sawtooth');
+        osc.frequency.setValueAtTime(s.f, t0 + off);
+        g.gain.setValueAtTime(0, t0 + off);
+        g.gain.linearRampToValueAtTime(s.v, t0 + off + 0.012);
+        g.gain.exponentialRampToValueAtTime(0.001, t0 + off + s.d);
+        osc.connect(g);
+        g.connect(audioCtx.destination);
+        osc.start(t0 + off);
+        osc.stop(t0 + off + s.d + 0.03);
+        off += s.d * 0.55;
+      }
+    };
+    if (audioCtx.state === 'running') play();
+    else void audioCtx.resume().then(play);
+  }
+
+  var winFxRaf = null;
+  var winFxParts = [];
+  var winFxCelebrating = false;
+  function pushGoBurst(cx, cy, hue) {
+    var n = 26;
+    for (var i = 0; i < n; i++) {
+      var a = Math.random() * Math.PI * 2;
+      var sp = 1.8 + Math.random() * 3.8;
+      winFxParts.push({
+        x: cx, y: cy,
+        vx: Math.cos(a) * sp,
+        vy: Math.sin(a) * sp - 0.8,
+        life: 1,
+        hue: hue == null ? 38 + Math.floor(Math.random() * 28) : hue,
+        drag: 0.978 + Math.random() * 0.02
+      });
+    }
+  }
+  function stepGoFx() {
+    if (!goLayer.classList.contains('on') || !winFxCelebrating) {
+      winFxRaf = null;
+      return;
+    }
+    var x = goFx.getContext('2d');
+    if (!x) return;
+    winFxRaf = requestAnimationFrame(stepGoFx);
+    x.clearRect(0, 0, W, H);
+    for (var i = winFxParts.length - 1; i >= 0; i--) {
+      var p = winFxParts[i];
+      p.vy += 0.055;
+      p.vx *= p.drag;
+      p.vy *= p.drag;
+      p.x += p.vx;
+      p.y += p.vy;
+      p.life -= 0.013;
+      if (p.life <= 0) {
+        winFxParts.splice(i, 1);
+        continue;
+      }
+      x.globalAlpha = Math.min(1, p.life);
+      x.fillStyle = 'hsl(' + p.hue + ',78%,62%)';
+      x.beginPath();
+      x.arc(p.x, p.y, 2.4, 0, Math.PI * 2);
+      x.fill();
+    }
+    x.globalAlpha = 1;
+    if (Math.random() < 0.085) pushGoBurst(Math.random() * W, H * 0.3 + Math.random() * H * 0.55, null);
+  }
+  function startGoFireworks() {
+    stopGoFireworks();
+    winFxCelebrating = true;
+    var x = goFx.getContext('2d');
+    if (x) x.clearRect(0, 0, W, H);
+    winFxParts = [];
+    for (var b = 0; b < 5; b++) pushGoBurst(W * (0.12 + b * 0.19), H * (0.38 + (b % 2) * 0.12), 32 + b * 14);
+    stepGoFx();
+  }
+  function stopGoFireworks() {
+    winFxCelebrating = false;
+    if (winFxRaf) cancelAnimationFrame(winFxRaf);
+    winFxRaf = null;
+    winFxParts = [];
+    var x = goFx.getContext('2d');
+    if (x) x.clearRect(0, 0, W, H);
+  }
+
+  var matchOver = false;
+
+  function endRally(playerWon) {
+    ensureAudio();
+    matchOver = true;
+    ball.vx = ball.vy = 0;
+    goLayer.classList.toggle('lose', !playerWon);
+    goTitle.textContent = playerWon ? 'YOU WIN' : 'GAME OVER';
+    goRes.textContent = playerWon
+      ? 'Nice rally — ' + scoreP + ' · ' + scoreC
+      : 'CPU takes it — ' + scoreP + ' · ' + scoreC;
+    goRes.textContent += '\nFirst to ' + POINTS_TO_WIN + ' points';
+    btnAgain.style.borderColor = playerWon ? '#c8a96e' : '#8a7060';
+    btnAgain.style.color = playerWon ? '#c8a96e' : '#a08070';
+    goLayer.classList.add('on');
+    if (playerWon) startGoFireworks();
+    else stopGoFireworks();
+    if (playerWon) sndYouWinRally();
+    else sndCpuWinsRally();
+    setStatus('');
+    if (isTouchUI) touchPause.textContent = 'Play again';
+  }
+
+  function resetRally() {
+    stopGoFireworks();
+    matchOver = false;
+    goLayer.classList.remove('on');
+    goLayer.classList.remove('lose');
+    phase = 'idle';
+    scoreRow.classList.add('hidden');
+    canvas.classList.add('can-tap');
+    scoreP = scoreC = 0;
+    elP.textContent = '0';
+    elC.textContent = '0';
+    postScoreUntil = 0;
+    ball.x = W / 2;
+    ball.y = H / 2;
+    ball.vx = ball.vy = 0;
+    trail.length = 0;
+    setStatus('');
+    if (isTouchUI) touchPause.textContent = 'Start';
+  }
+
+  btnAgain.addEventListener('click', function () {
+    unlockAudioFromUserGesture();
+    resetRally();
+  });
 
   var phase = 'idle';
   var scoreP = 0, scoreC = 0;
@@ -460,6 +705,10 @@
   function startPlay() {
     ensureAudio();
     applyDifficultyParams();
+    matchOver = false;
+    stopGoFireworks();
+    goLayer.classList.remove('on');
+    goLayer.classList.remove('lose');
     phase = 'play';
     scoreRow.classList.remove('hidden');
     canvas.classList.remove('can-tap');
@@ -474,6 +723,11 @@
   function togglePause() {
     unlockAudioFromUserGesture();
     ensureAudio();
+    if (matchOver) {
+      resetRally();
+      startPlay();
+      return;
+    }
     if (phase === 'idle') {
       startPlay();
       return;
@@ -522,11 +776,21 @@
   }, function () { keys.right = false; });
   touchPause.addEventListener('click', function () {
     unlockAudioFromUserGesture();
+    if (matchOver) {
+      resetRally();
+      startPlay();
+      return;
+    }
     togglePause();
   });
   touchPause.addEventListener('touchstart', function (e) {
     e.preventDefault();
     unlockAudioFromUserGesture();
+    if (matchOver) {
+      resetRally();
+      startPlay();
+      return;
+    }
     togglePause();
   }, { passive: false });
 
@@ -629,8 +893,11 @@
     ctx.letterSpacing = '0.15em';
     ctx.fillText('R A L L Y', W / 2, 100);
     ctx.letterSpacing = '0';
+    ctx.font = '9px system-ui, sans-serif';
+    ctx.fillStyle = '#3a3025';
+    ctx.fillText('FIRST TO ' + POINTS_TO_WIN + ' POINTS', W / 2, 116);
 
-    var rowY = 128;
+    var rowY = 134;
     var labels = ['CADET', 'PILOT', 'ACE'];
     diffHitRects = [];
     var totalW = 0;
@@ -657,7 +924,7 @@
     ctx.textAlign = 'left';
     ctx.letterSpacing = '0';
 
-    var iy = 175;
+    var iy = 182;
     ctx.fillStyle = '#3a3025';
     ctx.font = '9px system-ui, sans-serif';
     ctx.letterSpacing = '0.15em';
@@ -705,12 +972,12 @@
     ctx.stroke();
     ctx.setLineDash([]);
 
-    if (phase === 'play' && now < postScoreUntil && ball.vx === 0 && ball.vy === 0) {
+    if (phase === 'play' && !matchOver && now < postScoreUntil && ball.vx === 0 && ball.vy === 0) {
       if (keys.left) player.x = clampPaddle(player.x - PLAYER_SPEED * f);
       if (keys.right) player.x = clampPaddle(player.x + PLAYER_SPEED * f);
     }
 
-    if (phase === 'play' && now >= postScoreUntil) {
+    if (phase === 'play' && !matchOver && now >= postScoreUntil) {
       if (keys.left) player.x = clampPaddle(player.x - PLAYER_SPEED * f);
       if (keys.right) player.x = clampPaddle(player.x + PLAYER_SPEED * f);
 
@@ -745,8 +1012,11 @@
         ball.vx = 0;
         ball.vy = 0;
         trail.length = 0;
-        postScoreUntil = now + 1500;
-        nextServeToPlayer = true;
+        if (scoreC >= POINTS_TO_WIN) endRally(false);
+        else {
+          postScoreUntil = now + 1500;
+          nextServeToPlayer = true;
+        }
       } else if (ball.y + BALL_R < 0) {
         scoreP++;
         elP.textContent = scoreP;
@@ -756,12 +1026,15 @@
         ball.vx = 0;
         ball.vy = 0;
         trail.length = 0;
-        postScoreUntil = now + 1500;
-        nextServeToPlayer = false;
+        if (scoreP >= POINTS_TO_WIN) endRally(true);
+        else {
+          postScoreUntil = now + 1500;
+          nextServeToPlayer = false;
+        }
       }
     }
 
-    if (phase === 'play' && now >= postScoreUntil && ball.vx === 0 && ball.vy === 0) {
+    if (phase === 'play' && !matchOver && now >= postScoreUntil && ball.vx === 0 && ball.vy === 0) {
       resetBall(nextServeToPlayer);
     }
 
