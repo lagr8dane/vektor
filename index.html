@@ -334,17 +334,7 @@
       typeInto(m2, '[2] I\'m here for Gunner!', 28, function () {
         m2.disabled = false;
         m2.addEventListener('click', goGunner);
-        var m3 = document.createElement('button');
-        m3.type = 'button';
-        m3.className = 'term-line term-menu-opt';
-        m3.setAttribute('aria-label', 'Option 3: Vektor catalog');
-        out.appendChild(m3);
-        typeInto(m3, '[3] Vektor catalog — all games', 22, function () {
-          m3.addEventListener('click', function () {
-            window.location.href = '/games.html';
-          });
-          if (done) done();
-        }, false);
+        if (done) done();
       }, false);
     }, false);
   }
@@ -357,9 +347,6 @@
     } else if (e.key === '2' && menuGunnerBtn && !menuGunnerBtn.disabled) {
       e.preventDefault();
       goGunner();
-    } else if (e.key === '3') {
-      e.preventDefault();
-      window.location.href = '/games.html';
     }
   });
 
