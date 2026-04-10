@@ -1785,11 +1785,12 @@
       else if (keys.right) paddleVel = Math.min(paddleVel + 0.35, 6);
       else paddleVel *= 0.82;
       paddleX += paddleVel;
-    } else if (mouseX != null) {
-      paddleX = mouseX;
     } else {
       if (keys.left) paddleX -= 8;
       if (keys.right) paddleX += 8;
+      if (mouseX != null && !keys.left && !keys.right) {
+        paddleX = mouseX;
+      }
     }
     paddleX = Math.max(paddleW / 2 + 4, Math.min(W - paddleW / 2 - 4, paddleX));
   }
