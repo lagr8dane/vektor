@@ -684,7 +684,9 @@ function moveBall() {
   var car = carrier();
   if (car) {
     var ang = Math.atan2(car.vy, car.vx);
-    if (Math.abs(car.vx) + Math.abs(car.vy) < 0.05) ang = -Math.PI / 2;
+    if (Math.abs(car.vx) + Math.abs(car.vy) < 0.05) {
+      ang = car.team === 'cpu' ? Math.PI / 2 : -Math.PI / 2;
+    }
     ball.x = car.x + Math.cos(ang) * 12;
     ball.y = car.y + Math.sin(ang) * 12;
     return;
@@ -787,15 +789,23 @@ function cpuField(p) {
   var gyTop = field.y + field.h * 0.35;
   var gyBot = field.y + field.h * 0.65;
 
+  if (!p.hasBall) {
+    p.vx = 0;
+    p.vy = 0;
+  }
+
   if (p.hasBall) {
-    var goalY = field.y + BALL_R;
-    var dist = Math.hypot(p.x - gx, p.y - goalY);
+    var goalAttackY = field.y + field.h - GOAL_D * 0.5;
+    var dist = Math.hypot(p.x - gx, p.y - goalAttackY);
     if (dist < cpuTactics.shootRange && rnd() < 0.04 + cpuTactics.aggression * 0.05) {
       shootCpu(p);
       return;
     }
-    p.x += (gx - p.x) / Math.max(40, dist) * base * 0.8;
-    p.y += (goalY - p.y) / Math.max(40, dist) * base * 0.8;
+    var invD = base * 0.85 / Math.max(50, dist);
+    p.x += (gx - p.x) * invD;
+    p.y += (goalAttackY - p.y) * invD;
+    p.vx = (gx - p.x) * invD;
+    p.vy = (goalAttackY - p.y) * invD;
     if (rnd() < 0.02) cpuTryPass(p);
     return;
   }
@@ -814,8 +824,12 @@ function cpuField(p) {
   var d = Math.hypot(target.x - p.x, target.y - p.y);
   if (d < cpuTactics.pressDistance || form === 'attack') {
     if (d > 2) {
-      p.x += (target.x - p.x) / d * base;
-      p.y += (target.y - p.y) / d * base;
+      var mx = (target.x - p.x) / d * base;
+      var my = (target.y - p.y) / d * base;
+      p.x += mx;
+      p.y += my;
+      p.vx = mx;
+      p.vy = my;
     }
   }
 }
