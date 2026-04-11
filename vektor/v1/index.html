@@ -315,6 +315,12 @@
   const BALL_R = 7;
   const PLAYER_SPEED = 7;
   const TRAIL_LEN = 8;
+  /** In-flight curve: spin steers velocity perpendicular (Magnus-style), decays over time. */
+  const MAGNUS_PER_FRAME = 0.11;
+  const SPIN_DECAY_PER_ROOT_F = 0.987;
+  const SPIN_FROM_EDGE = 0.48;
+  const SPIN_FROM_MOTION = 0.38;
+  const SPIN_MAX = 1.15;
   const POINTS_TO_WIN = 7;
   const FRAME_MS = 1000 / 60;
   const DIFF_KEY = 'vektor-difficulty';
@@ -620,6 +626,7 @@
     ensureAudio();
     matchOver = true;
     ball.vx = ball.vy = 0;
+    ball.spin = 0;
     goLayer.classList.toggle('lose', !playerWon);
     goTitle.textContent = playerWon ? 'YOU WIN' : 'GAME OVER';
     goRes.textContent = playerWon
@@ -652,6 +659,7 @@
     ball.x = W / 2;
     ball.y = H / 2;
     ball.vx = ball.vy = 0;
+    ball.spin = 0;
     trail.length = 0;
     setStatus('');
     if (isTouchUI) touchPause.textContent = 'Start';
@@ -669,7 +677,7 @@
 
   const player = { x: W / 2 - PADDLE_W / 2, y: H - 24 - PADDLE_H };
   const cpu = { x: W / 2 - PADDLE_W / 2, y: 24 };
-  const ball = { x: W / 2, y: H / 2, vx: 0, vy: 0 };
+  const ball = { x: W / 2, y: H / 2, vx: 0, vy: 0, spin: 0 };
   const trail = [];
   const keys = { left: false, right: false };
 
@@ -690,6 +698,7 @@
     var mag = Math.hypot(ball.vx, ball.vy) || 1;
     ball.vx = (ball.vx / mag) * ballSpeed;
     ball.vy = (ball.vy / mag) * ballSpeed;
+    ball.spin = 0;
     trail.length = 0;
   }
 
@@ -853,7 +862,22 @@
     return true;
   }
 
-  function applyPaddleBounce(isPlayer) {
+  function applyBallMagnus(f) {
+    if (Math.abs(ball.spin) < 1e-5) return;
+    var vm = Math.hypot(ball.vx, ball.vy);
+    if (vm < 1e-6) return;
+    var nx = -ball.vy / vm;
+    var ny = ball.vx / vm;
+    var step = MAGNUS_PER_FRAME * f;
+    ball.vx += nx * ball.spin * step;
+    ball.vy += ny * ball.spin * step;
+    ball.spin *= Math.pow(SPIN_DECAY_PER_ROOT_F, f);
+    vm = Math.hypot(ball.vx, ball.vy) || 1;
+    ball.vx = (ball.vx / vm) * ballSpeed;
+    ball.vy = (ball.vy / vm) * ballSpeed;
+  }
+
+  function applyPaddleBounce(isPlayer, paddleDx, f) {
     var paddle = isPlayer ? player : cpu;
     var pc = paddle.x + PADDLE_W / 2;
     var relative = (ball.x - pc) / (PADDLE_W / 2);
@@ -870,6 +894,11 @@
     var mag = Math.hypot(ball.vx, ball.vy) || 1;
     ball.vx = (ball.vx / mag) * ballSpeed;
     ball.vy = (ball.vy / mag) * ballSpeed;
+    var spdLim = isPlayer ? PLAYER_SPEED : CPU_SPEED;
+    var denom = spdLim * Math.max(0.35, f) + 0.01;
+    var motion = Math.max(-1, Math.min(1, paddleDx / denom));
+    ball.spin = relative * SPIN_FROM_EDGE + motion * SPIN_FROM_MOTION;
+    ball.spin = Math.max(-SPIN_MAX, Math.min(SPIN_MAX, ball.spin));
     if (isPlayer) {
       ball.y = player.y - BALL_R;
       sndPlayerHit();
@@ -978,30 +1007,37 @@
     }
 
     if (phase === 'play' && !matchOver && now >= postScoreUntil) {
+      var pxBefore = player.x;
       if (keys.left) player.x = clampPaddle(player.x - PLAYER_SPEED * f);
       if (keys.right) player.x = clampPaddle(player.x + PLAYER_SPEED * f);
+      var playerDx = player.x - pxBefore;
 
+      var cxBefore = cpu.x;
       var errOff = (Math.random() - 0.5) * PADDLE_W * diff().cpuError;
       var target = ball.x + ball.vx * 8 + errOff;
       var cx = cpu.x + PADDLE_W / 2;
       if (target < cx - 2) cpu.x = clampPaddle(cpu.x - CPU_SPEED * f);
       else if (target > cx + 2) cpu.x = clampPaddle(cpu.x + CPU_SPEED * f);
+      var cpuDx = cpu.x - cxBefore;
 
       ball.x += ball.vx * f;
       ball.y += ball.vy * f;
+      applyBallMagnus(f);
 
       if (ball.x - BALL_R <= 0) {
         ball.x = BALL_R;
         ball.vx *= -1;
+        ball.spin *= -0.62;
         sndWall();
       } else if (ball.x + BALL_R >= W) {
         ball.x = W - BALL_R;
         ball.vx *= -1;
+        ball.spin *= -0.62;
         sndWall();
       }
 
-      if (hitCpu()) applyPaddleBounce(false);
-      else if (hitPlayer()) applyPaddleBounce(true);
+      if (hitCpu()) applyPaddleBounce(false, cpuDx, f);
+      else if (hitPlayer()) applyPaddleBounce(true, playerDx, f);
 
       if (ball.y - BALL_R > H) {
         scoreC++;
@@ -1011,6 +1047,7 @@
         ball.y = H / 2;
         ball.vx = 0;
         ball.vy = 0;
+        ball.spin = 0;
         trail.length = 0;
         if (scoreC >= POINTS_TO_WIN) endRally(false);
         else {
@@ -1025,6 +1062,7 @@
         ball.y = H / 2;
         ball.vx = 0;
         ball.vy = 0;
+        ball.spin = 0;
         trail.length = 0;
         if (scoreP >= POINTS_TO_WIN) endRally(true);
         else {
